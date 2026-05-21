@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "mode": "standard",
+    "llm_budget_preset": "balanced",
+    "max_llm_calls": 2,
+    "modes": {
+      "fast": {
+        "responder": true,
+        "evaluator": false,
+        "retry_responder_on_low_faithfulness": false
+      },
+      "standard": {
+        "responder": true,
+        "evaluator": true,
+        "retry_responder_on_low_faithfulness": false
+      },
+      "strict": {
+        "responder": true,
+        "evaluator": true,
+        "retry_responder_on_low_faithfulness": true
+      },
+      "custom": {
+        "responder": true,
+        "evaluator": true,
+        "retry_responder_on_low_faithfulness": false
+      }
+    },
+    "stages": {
+      "query_builder": {
+        "enabled": false,
+        "counts_toward_budget": true
+      },
+      "responder": {
+        "enabled": true,
+        "counts_toward_budget": true
+      },
+      "evaluator": {
+        "enabled": true,
+        "counts_toward_budget": true
+      },
+      "responder_retry": {
+        "enabled": false,
+        "counts_toward_budget": true
+      }
+    },
+    "experiments": {
+      "advanced_reasoning": {
+        "enabled": true,
+        "typed_planner_output": true,
+        "multi_query_retrieval": true,
+        "evidence_table": true,
+        "structured_reply": true
+      },
+      "retrieval_strategy_v1": {
+        "arm": "current_hybrid_rag",
+        "allowed_arms": [
+          "current_hybrid_rag",
+          "current_rag_query_decomposition",
+          "markdown_canonical_current_rag"
+        ]
+      }
+    },
+    "trace_retention_days": 30
+  }
+}

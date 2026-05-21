@@ -1,0 +1,3 @@
+ticket_id,customer_message,agent_resolution,created_at,product,redaction_status
+T-1001,"Fictional raw ticket sample for offline contract preview only. Customer cannot receive a reset email.","Agent confirmed mailbox filtering and advised the admin to retry after allowlisting the sender.",2026-04-01,Example Product,fictional_sample
+T-1002,"Fictional raw ticket sample for offline contract preview only. Customer asks who can change billing contact.","Agent cited the billing contact policy and routed ownership recovery to account verification.",2026-04-02,Example Product,fictional_sample

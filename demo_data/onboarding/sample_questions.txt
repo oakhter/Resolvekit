@@ -1,0 +1,3 @@
+Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.
+Customer can access the website but mobile sign-in fails after an admin changed their role.
+Customer asks for a refund policy exception that is not in approved sources.

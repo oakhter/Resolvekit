@@ -1,0 +1,51 @@
+{
+  "required": [
+    "ticket_id",
+    "ticket_text",
+    "product",
+    "platform",
+    "role",
+    "expected_route",
+    "expected_source_ids",
+    "forbidden_source_ids",
+    "acceptable_response_shape",
+    "must_include_points",
+    "must_not_include_points",
+    "expected_confidence_band",
+    "review_required_expected",
+    "notes"
+  ],
+  "metrics": [
+    "retrieval_recall",
+    "retrieval_recall_at_1",
+    "retrieval_recall_at_3",
+    "retrieval_recall_at_5",
+    "mean_reciprocal_rank",
+    "source_precision",
+    "citation_recall",
+    "citation_precision",
+    "cites_only_approved_sources",
+    "citation_support_faithfulness",
+    "answer_relevance",
+    "required_point_coverage",
+    "forbidden_point_violation_count",
+    "route_accuracy",
+    "missing_context_behavior",
+    "abstention_correctness",
+    "fallback_rate",
+    "validation_pass_rate",
+    "confidence_calibration",
+    "latency",
+    "latency_p50",
+    "latency_p95",
+    "token_usage",
+    "cost_per_query",
+    "cost_per_run"
+  ],
+  "hard_failures": [
+    "customer_facing_unapproved_citation",
+    "raw_historical_ticket_citation",
+    "forbidden_source_citation",
+    "unsupported_factual_claim"
+  ]
+}

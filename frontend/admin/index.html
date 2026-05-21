@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResolveKit Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f8fafc;color:#0f172a}.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.nav{background:#0f172a;color:#e2e8f0;padding:24px 18px}.brand{font-weight:800;margin-bottom:24px}.nav a{display:block;color:#cbd5e1;text-decoration:none;padding:10px 12px;border-radius:6px;margin:4px 0}.nav a:hover,.nav a.active{background:#1e293b;color:white}.main{padding:28px;display:grid;gap:20px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}.token{display:flex;gap:8px}.token input{width:360px;padding:10px;border:1px solid #cbd5e1;border-radius:6px}.token button,.card button{padding:10px 14px;border:0;border-radius:6px;background:#2563eb;color:white;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px}.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}.value{font-size:24px;font-weight:800;margin-top:6px}.section{display:grid;grid-template-columns:1fr 1fr;gap:14px}pre{white-space:pre-wrap;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px;max-height:360px;overflow:auto}.status{font-size:13px;color:#475569}@media(max-width:900px){.shell{grid-template-columns:1fr}.nav{display:flex;gap:6px;overflow:auto}.brand{display:none}.grid,.section{grid-template-columns:1fr}.token input{width:100%}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="nav">
+    <div class="brand">ResolveKit Admin</div>
+    <a class="active" href="#overview">Overview</a>
+    <a href="#sources">Sources</a>
+    <a href="#conversations">Conversations</a>
+    <a href="#replay">Replay Lab</a>
+    <a href="#eval">Evaluation</a>
+    <a href="#ab">A/B Experiments</a>
+    <a href="#exports">Exports</a>
+    <a href="/configurator">Config</a>
+    <a href="#audit">Audit</a>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div>
+        <h1>Launch Control</h1>
+        <div class="status" id="role">Enter admin token to load admin metrics.</div>
+      </div>
+      <div class="token">
+        <input id="token" type="password" placeholder="Admin token">
+        <button onclick="loadAll()">Load</button>
+      </div>
+    </div>
+    <section class="grid" id="cards"></section>
+    <section class="section">
+      <div class="card">
+        <div class="label">Launch Readiness</div>
+        <pre id="readiness">{}</pre>
+      </div>
+      <div class="card">
+        <div class="label">Sources</div>
+        <button onclick="sourceReport()">Run Source Validation</button>
+        <pre id="sources">{}</pre>
+      </div>
+      <div class="card">
+        <div class="label">Replay Lab</div>
+        <input id="trace" placeholder="trace_id" style="width:100%;padding:10px;margin:10px 0">
+        <button onclick="replay()">Replay Trace</button>
+        <pre id="replayOut">{}</pre>
+      </div>
+      <div class="card">
+        <div class="label">Audit</div>
+        <pre id="audit">{}</pre>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+function headers(){return {"x-api-key":$("token").value.trim(),"content-type":"application/json"}}
+async function get(path){const r=await fetch(path,{headers:headers()});return r.json()}
+async function post(path,body={}){const r=await fetch(path,{method:"POST",headers:headers(),body:JSON.stringify(body)});return r.json()}
+async function loadAll(){
+  localStorage.setItem("resolvekit_admin_token",$("token").value.trim());
+  const me=await get("/api/me"); $("role").textContent=`${me.role||"unknown"} / ${(me.permissions||[]).length} permissions`;
+  const overview=await get("/admin/overview"); const cards=overview.metric_cards||{};
+  $("cards").innerHTML=Object.entries(cards).map(([k,v])=>`<div class="card"><div class="label">${k.replaceAll("_"," ")}</div><div class="value">${v??"n/a"}</div></div>`).join("");
+  $("readiness").textContent=JSON.stringify(await get("/launch-readiness"),null,2);
+  $("sources").textContent=JSON.stringify(await get("/sources/status"),null,2);
+  $("audit").textContent=JSON.stringify(await get("/audit-log"),null,2);
+}
+async function sourceReport(){ $("sources").textContent=JSON.stringify(await post("/sources/import-preview",{}),null,2) }
+async function replay(){ $("replayOut").textContent=JSON.stringify(await post(`/traces/${$("trace").value.trim()}/replay`,{}),null,2) }
+$("token").value=localStorage.getItem("resolvekit_admin_token")||"";
+</script>
+</body>
+</html>

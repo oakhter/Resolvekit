@@ -1,0 +1,27 @@
+variant_id: 14_feedback_capture_v2_reason_code_required
+stage: feedback_capture
+stage_number: 14
+name: Reason-code required
+experiment_mode: offline_replay_only
+changed_lever: require reason for edited/rejected
+expected_effect: Better diagnostics
+primary_metric: reviewer_ready_signal_completeness
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  completion_rate_tracked: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  require_reason_code: true
+config_hash: 494d7652ffa73c48

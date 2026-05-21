@@ -1,0 +1,27 @@
+variant_id: 09_context_packing_v2_source_deduped
+stage: context_packing
+stage_number: 9
+name: Source-deduped
+experiment_mode: offline_replay_only
+changed_lever: limit repeated chunks from same source
+expected_effect: Reduces evidence flooding
+primary_metric: citation_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  recall_tracked: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  source_dedupe: true
+config_hash: 2eebb56317bd1ee9

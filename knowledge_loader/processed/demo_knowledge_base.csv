@@ -1,0 +1,36 @@
+id,title,url_name,url,content,product,platform,updated_at,category
+kb-001,Example Product | Reset a user password,reset-user-password,https://example.test/example/help/reset-user-password,"# Reset a user password
+
+Admins can send a password reset link from Settings > Users. Open the affected user, choose Send reset link, and confirm that the email address is current before sending. The link expires after 30 minutes.
+
+If the user does not receive the email, ask them to check spam, confirm that their mailbox is active, and retry once. If delivery still fails, escalate with the user email domain and the timestamp of the latest reset attempt.",Example Product,website,2026-04-15,accounts
+kb-002,Example Product | Configure team inbox routing,configure-team-inbox-routing,https://example.test/example/help/team-inbox-routing,"# Team inbox routing
+
+Workspace admins can route new conversations by channel, topic, and team availability. Go to Settings > Routing, choose a team inbox, and set the default assignment rule. Save changes before testing with a new conversation.
+
+Routing rules apply only to conversations created after the rule is saved. Existing conversations keep their current owner unless a manager reassigns them manually.",Example Product,website,2026-04-12,routing
+kb-003,Example Product | Mobile notification troubleshooting,mobile-notification-troubleshooting,https://example.test/example/help/mobile-notifications,"# Mobile notifications
+
+If an agent does not receive push notifications, confirm that mobile notifications are enabled in Example Product and in the device operating system. Ask the agent to sign out and sign in again after changing notification permissions.
+
+Push notifications are sent only for conversations assigned to the agent or to a team inbox where the agent is currently available.",Example Product,app,2026-04-10,mobile
+kb-007,Example Product | Mobile login 403 after update,mobile-login-403-after-update,https://example.test/example/help/mobile-login-403,"# Mobile login 403 after update
+
+If a user sees a 403 error only in the mobile app after an update while the website still works, ask the user to sign out of the mobile app and sign back in so Example Product can refresh the mobile session token.
+
+If sign-in still fails, confirm the user has an active employee role, collect the app version and device operating system, and escalate to support with the timestamp of the latest failed mobile login attempt.",Example Product,app,2026-04-24,mobile
+kb-004,Example Product | Export conversation history,export-conversation-history,https://example.test/example/help/export-conversations,"# Export conversation history
+
+Admins and compliance managers can export conversation history from Reports > Exports. Choose the date range, channel, and status filters, then select Request export. Example Product sends a download link when the export is ready.
+
+Exports can include customer messages, public replies, timestamps, and tags. Private internal notes are excluded unless the compliance export option is enabled by an account owner.",Example Product,website,2026-04-08,reports
+kb-005,Example Product | Mobile offline queue, mobile-offline-queue,https://example.test/example/help/mobile-offline-queue,"# Mobile offline queue
+
+The mobile app can queue public replies while an agent has an unstable connection. Queued replies show a pending badge until the app reconnects and syncs the message.
+
+Ask the agent to keep the app open until the pending badge clears. If the badge remains for more than ten minutes after reconnecting, collect the app version, device operating system, and the conversation ID before escalating.",Example Product,app,2026-04-14,mobile
+kb-006,Example Product | Website session timeout,website-session-timeout,https://example.test/example/help/website-session-timeout,"# Website session timeout
+
+The website signs users out after eight hours of inactivity or immediately after an admin changes their role. Users should refresh the browser and sign in again before retrying a failed admin action.
+
+If a website action still fails after sign-in, confirm the user's current role and ask whether the browser blocks third-party cookies for Example Product.",Example Product,website,2026-04-13,website

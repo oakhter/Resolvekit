@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResolveKit Get Started</title>
+<style>
+:root { color-scheme: dark; --bg:#0b1120; --panel:#111827; --line:#263244; --text:#f8fafc; --muted:#9ca3af; --blue:#3b82f6; --green:#22c55e; --yellow:#facc15; --red:#f87171; --teal:#2dd4bf; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+header { padding:24px 32px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+h1 { margin:0; font-size:22px; }
+.sub { color:var(--muted); font-size:13px; margin-top:4px; }
+main { max-width:1180px; margin:0 auto; padding:28px; display:grid; grid-template-columns:280px 1fr; gap:22px; }
+.steps, .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+.steps { padding:12px; height:max-content; }
+.step { padding:12px; border-radius:8px; color:var(--muted); font-size:13px; display:flex; gap:9px; align-items:center; }
+.step.active { background:#172033; color:var(--text); }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--muted); }
+.step.done .dot { background:var(--green); }
+.step.active .dot { background:var(--blue); }
+.panel { padding:24px; min-height:620px; }
+.grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
+.card { border:1px solid var(--line); border-radius:8px; padding:14px; background:#0f172a; }
+.card strong { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+.ok { color:var(--green); } .warn { color:var(--yellow); } .fail { color:var(--red); }
+label { display:block; font-size:12px; color:var(--muted); margin:14px 0 6px; text-transform:uppercase; letter-spacing:.08em; }
+input, select, textarea { width:100%; border:1px solid var(--line); border-radius:8px; background:#0f172a; color:var(--text); padding:11px 12px; font:inherit; }
+textarea { min-height:120px; resize:vertical; }
+button { border:0; border-radius:8px; background:var(--blue); color:white; padding:11px 14px; font-weight:700; cursor:pointer; }
+button.secondary { background:#1f2937; color:var(--text); border:1px solid var(--line); }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+pre { background:#020617; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; color:#cbd5e1; max-height:260px; }
+.task { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); padding:12px 0; gap:12px; }
+.task:last-child { border-bottom:0; }
+.small { color:var(--muted); font-size:13px; line-height:1.5; }
+.hidden { display:none; }
+a { color:#93c5fd; }
+@media (max-width:860px) { main { grid-template-columns:1fr; padding:16px; } .grid { grid-template-columns:1fr; } header { padding:18px; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>ResolveKit Get Started</h1>
+    <div class="sub">Local setup wizard. Provider key stays only in local .env.</div>
+  </div>
+  <button class="secondary" onclick="refresh()">Refresh</button>
+</header>
+<main>
+  <aside class="steps" id="steps"></aside>
+  <section class="panel" id="panel"></section>
+</main>
+<script>
+const steps = ["System", "Provider key", "Setup", "Sources", "First draft", "Launch"];
+const state = { step: 0, status: null, log: "", uploads: [] };
+const tasks = [
+  ["install_dependencies", "Install Python dependencies"],
+  ["start_database", "Start Docker Postgres/pgvector"],
+  ["generate_demo_data", "Generate demo data"],
+  ["setup_database", "Create database schemas"],
+  ["load_knowledge", "Load knowledge sources"],
+  ["run_doctor", "Run onboarding doctor"],
+  ["start_app", "Start ResolveKit app"],
+];
+
+function cls(value) { return value ? "ok" : "fail"; }
+function setStep(index) { state.step = index; render(); }
+function log(text) { state.log = `${text}\n${state.log}`.slice(0, 12000); render(); }
+async function api(path, opts={}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  return data;
+}
+async function refresh() {
+  state.status = (await api("/api/status")).setup;
+  render();
+}
+function renderSteps() {
+  document.getElementById("steps").innerHTML = steps.map((name, i) =>
+    `<div class="step ${i === state.step ? "active" : ""} ${i < state.step ? "done" : ""}"><span class="dot"></span>${name}</div>`
+  ).join("");
+}
+function card(name, value, detail="") {
+  const good = value === true || value === "ok";
+  const warn = value === "warn";
+  return `<div class="card"><strong>${name}</strong><span class="${warn ? "warn" : cls(good)}">${warn ? "WARN" : good ? "OK" : "NEEDS SETUP"}</span><div class="small">${detail}</div></div>`;
+}
+function renderSystem() {
+  const s = state.status || {};
+  const os = s.os || {};
+  return `
+    <h2>System Check</h2>
+    <p class="small">Detected path: ${s.container_mode ? "Docker container" : (os.label || "unknown")}. Docker install uses guided OS-specific instructions when missing.</p>
+    <div class="grid">
+      ${card("OS", true, os.label || "")}
+      ${card("Python", true, s.python || "")}
+      ${card("Docker CLI", s.docker_cli, os.docker_install_hint || "")}
+      ${card("Docker Ready", s.docker_ready, s.docker_ready ? "Daemon reachable" : os.docker_install_hint || "Start Docker")}
+      ${card("Compose", s.docker_compose, "Docker Compose plugin")}
+      ${card("Provider Key", s.provider_key_present, `${s.provider || "openai"} / ${s.provider_key_name || ""}`)}
+    </div>
+    <div class="row"><button onclick="setStep(1)">Continue</button><button class="secondary" onclick="refresh()">Recheck</button></div>
+  `;
+}
+function renderProvider() {
+  const s = state.status || {};
+  return `
+    <h2>Provider Key</h2>
+    <p class="small">Required. Bring your own provider key. Saved only to local <code>.env</code>; masked everywhere else.</p>
+    <label>Provider</label>
+    <select id="provider"><option value="openai" ${s.provider === "openai" ? "selected" : ""}>OpenAI</option><option value="gemini" ${s.provider === "gemini" ? "selected" : ""}>Gemini</option></select>
+    <label>Provider API key</label>
+    <input id="providerKey" type="password" placeholder="Paste your provider key">
+    <div class="row"><button onclick="saveProvider()">Save key</button><button class="secondary" onclick="setStep(0)">Back</button></div>
+  `;
+}
+async function saveProvider() {
+  const provider = document.getElementById("provider").value;
+  const provider_key = document.getElementById("providerKey").value.trim();
+  await api("/api/env", { method:"POST", body:JSON.stringify({ provider, provider_key }) });
+  log("Provider key saved to local .env");
+  await refresh();
+  setStep(2);
+}
+function renderSetup() {
+  return `
+    <h2>Setup Tasks</h2>
+    <p class="small">Run all tasks. If Docker is missing, install/start Docker for your OS, then rerun Start Docker DB.</p>
+    ${tasks.map(([id, label]) => `<div class="task"><div><strong>${label}</strong><div class="small">${id}</div></div><button onclick="runTask('${id}')">Run</button></div>`).join("")}
+    <div class="row"><button onclick="runAll()">Run all</button><button class="secondary" onclick="setStep(3)">Continue</button></div>
+    <pre>${escapeHtml(state.log || "No setup log yet.")}</pre>
+  `;
+}
+async function runTask(name) {
+  log(`Running ${name}...`);
+  const data = await api("/api/task", { method:"POST", body:JSON.stringify({ task:name }) });
+  const r = data.result || {};
+  log(`${name}: ${r.ok ? "ok" : "error"}\n${r.stdout || ""}\n${r.stderr || ""}\n${r.hint || ""}`);
+  await refresh();
+}
+async function runAll() {
+  for (const [id] of tasks) await runTask(id);
+}
+function renderSources() {
+  return `
+    <h2>Data Sources</h2>
+    <p class="small">Select CSV, XLSX, or born-digital PDF files. Files are copied into <code>demo_data/onboarding/uploads</code> and previewed before ingestion.</p>
+    <input id="files" type="file" multiple accept=".csv,.xlsx,.pdf">
+    <div class="row"><button onclick="uploadSources()">Upload and preview</button><button onclick="ingestSources()">Ingest uploaded sources</button><button class="secondary" onclick="setStep(4)">Continue</button></div>
+    <pre>${escapeHtml(JSON.stringify(state.uploads, null, 2))}</pre>
+  `;
+}
+async function uploadSources() {
+  const files = [...document.getElementById("files").files];
+  for (const file of files) {
+    const content_base64 = await readBase64(file);
+    const data = await api("/api/upload-source", { method:"POST", body:JSON.stringify({ filename:file.name, content_base64 }) });
+    state.uploads.unshift({ filename:file.name, path:data.path, can_load:data.preview?.can_load, warnings:data.preview?.warnings, errors:data.preview?.errors });
+    log(`Uploaded ${file.name}`);
+  }
+  render();
+}
+async function ingestSources() {
+  const paths = state.uploads.map(item => item.path).filter(Boolean);
+  log("Ingesting uploaded sources...");
+  const data = await api("/api/ingest-sources", { method:"POST", body:JSON.stringify({ paths }) });
+  log(JSON.stringify(data.result, null, 2));
+}
+function readBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
+    reader.readAsDataURL(file);
+  });
+}
+function renderSmoke() {
+  return `
+    <h2>First Draft Test</h2>
+    <p class="small">Runs a demo support ticket through the main app. Requires provider key, DB, loaded sources, and app server.</p>
+    <label>Demo ticket</label>
+    <textarea id="ticket">Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.</textarea>
+    <div class="row"><button onclick="runSmoke()">Run first draft</button><button class="secondary" onclick="setStep(5)">Continue</button></div>
+    <pre>${escapeHtml(state.log || "")}</pre>
+  `;
+}
+async function runSmoke() {
+  await runTask("start_app");
+  log("Running first draft smoke...");
+  const data = await api("/api/task", { method:"POST", body:JSON.stringify({ task:"first_draft_smoke" }) });
+  log(JSON.stringify(data.result, null, 2));
+}
+function renderLaunch() {
+  return `
+    <h2>Launch</h2>
+    <p class="small">Setup complete. Open Viewer for support drafting or Admin for traces, source status, exports, evals, and config.</p>
+    <div class="row">
+      <a href="http://127.0.0.1:8000/" target="_blank"><button>Open Viewer</button></a>
+      <a href="http://127.0.0.1:8000/configurator" target="_blank"><button class="secondary">Open Admin</button></a>
+      <button class="secondary" onclick="refresh()">Refresh status</button>
+    </div>
+    <pre>${escapeHtml(JSON.stringify(state.status, null, 2))}</pre>
+  `;
+}
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+}
+function render() {
+  renderSteps();
+  const views = [renderSystem, renderProvider, renderSetup, renderSources, renderSmoke, renderLaunch];
+  document.getElementById("panel").innerHTML = views[state.step]();
+}
+refresh().catch(err => { state.log = err.message; render(); });
+</script>
+</body>
+</html>

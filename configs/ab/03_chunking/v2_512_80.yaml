@@ -1,0 +1,27 @@
+variant_id: 03_chunking_v2_512_80
+stage: chunking
+stage_number: 3
+name: 512/80
+experiment_mode: offline_replay_only
+changed_lever: 512 tokens, 80 overlap
+expected_effect: Balanced default
+primary_metric: source_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 0
+  cost_regression_max_pct: 15
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  chunk_size_tokens: 512
+  chunk_overlap_tokens: 80
+config_hash: c1b32e194fd6e0c8

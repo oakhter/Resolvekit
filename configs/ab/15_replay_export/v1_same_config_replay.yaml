@@ -1,0 +1,27 @@
+variant_id: 15_replay_export_v1_same_config_replay
+stage: replay_export
+stage_number: 15
+name: Same-config replay
+experiment_mode: offline_replay_only
+changed_lever: replay exact config hash
+expected_effect: Reproducibility baseline
+primary_metric: replay_reproducibility
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  secrets_excluded: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  replay_mode: same_config
+config_hash: 69636fb1ed24421e

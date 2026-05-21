@@ -1,0 +1,86 @@
+{
+  "sources": {
+    "knowledge_base": {
+      "enabled": true,
+      "source_type": "official_help_article",
+      "path": "knowledge_loader/processed/demo_knowledge_base.csv",
+      "audience": "customer_facing",
+      "required_columns": [
+        "title",
+        "content"
+      ],
+      "column_mapping": {
+        "title": "title",
+        "content": "content",
+        "url": "url",
+        "url_name": "url_name"
+      },
+      "default_authority": 1.0
+    },
+    "policies": {
+      "enabled": true,
+      "source_type": "policy",
+      "path": "knowledge_loader/processed/demo_policies.csv",
+      "audience": "customer_facing",
+      "required_columns": [
+        "policy_name",
+        "content"
+      ],
+      "column_mapping": {
+        "policy_name": "policy_name",
+        "content": "content",
+        "url": "url"
+      },
+      "default_authority": 1.0
+    },
+    "release_notes": {
+      "enabled": true,
+      "source_type": "release_note",
+      "path": "knowledge_loader/processed/demo_release_notes.csv",
+      "audience": "customer_facing",
+      "required_columns": [
+        "title",
+        "content"
+      ],
+      "column_mapping": {
+        "title": "title",
+        "content": "content",
+        "url": "url",
+        "url_name": "url_name"
+      },
+      "default_authority": 0.9
+    },
+    "known_issues": {
+      "enabled": true,
+      "source_type": "known_issue",
+      "path": "knowledge_loader/processed/demo_known_issues.csv",
+      "audience": "customer_facing",
+      "required_columns": [
+        "issue_title",
+        "symptoms"
+      ],
+      "column_mapping": {
+        "issue_title": "issue_title",
+        "symptoms": "symptoms",
+        "url": "url"
+      },
+      "default_authority": 0.85
+    },
+    "historical_tickets": {
+      "enabled": false,
+      "source_type": "raw_ticket_history",
+      "path": "knowledge_loader/processed/demo_historical_tickets_offline_only.csv",
+      "audience": "offline_only",
+      "required_columns": [
+        "ticket_id",
+        "customer_message"
+      ],
+      "column_mapping": {
+        "ticket_id": "ticket_id",
+        "customer_message": "content",
+        "agent_resolution": "agent_resolution"
+      },
+      "default_authority": 0.1
+    }
+  }
+}

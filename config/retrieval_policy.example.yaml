@@ -1,0 +1,361 @@
+{
+  "chunk_type_rules": {
+    "billing": {
+      "enabled": true,
+      "priority": 70,
+      "heading_keywords": [
+        "billing",
+        "invoice",
+        "payment",
+        "refund",
+        "subscription"
+      ],
+      "content_keywords": [
+        "invoice",
+        "card",
+        "charge",
+        "payment method",
+        "receipt"
+      ],
+      "negative_keywords": []
+    },
+    "permission": {
+      "enabled": true,
+      "priority": 65,
+      "heading_keywords": [
+        "permission",
+        "role",
+        "access",
+        "admin"
+      ],
+      "content_keywords": [
+        "permission",
+        "role",
+        "access level",
+        "authorized"
+      ],
+      "negative_keywords": []
+    },
+    "troubleshooting": {
+      "enabled": true,
+      "priority": 60,
+      "heading_keywords": [
+        "troubleshoot",
+        "error",
+        "issue",
+        "problem"
+      ],
+      "content_keywords": [
+        "not working",
+        "failed",
+        "error",
+        "fix"
+      ],
+      "negative_keywords": []
+    },
+    "how_to": {
+      "enabled": true,
+      "priority": 55,
+      "heading_keywords": [
+        "how to",
+        "steps",
+        "setup",
+        "configure"
+      ],
+      "content_keywords": [
+        "click",
+        "select",
+        "open",
+        "choose"
+      ],
+      "negative_keywords": []
+    },
+    "integration": {
+      "enabled": true,
+      "priority": 50,
+      "heading_keywords": [
+        "integration",
+        "api",
+        "webhook"
+      ],
+      "content_keywords": [
+        "api",
+        "webhook",
+        "token",
+        "endpoint"
+      ],
+      "negative_keywords": []
+    },
+    "policy": {
+      "enabled": true,
+      "priority": 45,
+      "heading_keywords": [
+        "policy",
+        "terms",
+        "rules"
+      ],
+      "content_keywords": [
+        "policy",
+        "required",
+        "allowed",
+        "not allowed"
+      ],
+      "negative_keywords": []
+    },
+    "faq": {
+      "enabled": true,
+      "priority": 40,
+      "heading_keywords": [
+        "faq",
+        "question"
+      ],
+      "content_keywords": [
+        "frequently asked",
+        "question"
+      ],
+      "negative_keywords": []
+    },
+    "warning": {
+      "enabled": true,
+      "priority": 35,
+      "heading_keywords": [
+        "warning",
+        "important",
+        "note"
+      ],
+      "content_keywords": [
+        "warning",
+        "important",
+        "note"
+      ],
+      "negative_keywords": []
+    }
+  },
+  "route_policies": {
+    "bug": {
+      "preferred_source_types": [
+        "knowledge_base",
+        "official_help_article",
+        "release_note",
+        "known_issue"
+      ],
+      "preferred_chunk_types": [
+        "troubleshooting",
+        "known_issue",
+        "release_change",
+        "faq"
+      ],
+      "boost": 0.15,
+      "disallowed_source_types": [
+        "raw_ticket_history",
+        "raw_chat_transcript",
+        "raw_call_transcript"
+      ]
+    },
+    "access": {
+      "preferred_source_types": [
+        "knowledge_base",
+        "official_help_article",
+        "policy"
+      ],
+      "preferred_chunk_types": [
+        "permission",
+        "configuration",
+        "how_to"
+      ],
+      "boost": 0.12,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "billing": {
+      "preferred_source_types": [
+        "policy",
+        "knowledge_base",
+        "official_help_article"
+      ],
+      "preferred_chunk_types": [
+        "billing",
+        "policy",
+        "faq",
+        "how_to"
+      ],
+      "boost": 0.15,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "how_to": {
+      "preferred_source_types": [
+        "knowledge_base",
+        "official_help_article",
+        "faq"
+      ],
+      "preferred_chunk_types": [
+        "how_to",
+        "configuration",
+        "faq",
+        "concept"
+      ],
+      "boost": 0.1,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "integration": {
+      "preferred_source_types": [
+        "knowledge_base",
+        "official_help_article",
+        "release_note"
+      ],
+      "preferred_chunk_types": [
+        "integration",
+        "configuration",
+        "troubleshooting"
+      ],
+      "boost": 0.12,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "policy": {
+      "preferred_source_types": [
+        "policy",
+        "knowledge_base",
+        "official_help_article"
+      ],
+      "preferred_chunk_types": [
+        "policy",
+        "faq",
+        "concept"
+      ],
+      "boost": 0.12,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "release_change": {
+      "preferred_source_types": [
+        "release_note",
+        "known_issue"
+      ],
+      "preferred_chunk_types": [
+        "release_change",
+        "known_issue",
+        "concept"
+      ],
+      "boost": 0.12,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    },
+    "general": {
+      "preferred_source_types": [
+        "knowledge_base",
+        "official_help_article",
+        "faq"
+      ],
+      "preferred_chunk_types": [
+        "concept",
+        "faq",
+        "how_to"
+      ],
+      "boost": 0.08,
+      "disallowed_source_types": [
+        "raw_ticket_history"
+      ]
+    }
+  },
+  "source_authority": {
+    "official_help_article": 1.0,
+    "knowledge_base": 1.0,
+    "policy": 1.0,
+    "official_internal_doc": 0.95,
+    "release_note": 0.9,
+    "known_issue": 0.85,
+    "reviewed_case_learning": 0.7,
+    "unreviewed_case_learning": 0.45,
+    "similar_resolved_ticket": 0.3,
+    "raw_ticket_history": 0.1,
+    "raw_chat_transcript": 0.1,
+    "raw_call_transcript": 0.1
+  },
+  "source_authority_presets": {
+    "active": "balanced",
+    "presets": {
+      "strict": {
+        "policy": 1.0,
+        "official_help_article": 0.95,
+        "knowledge_base": 0.95,
+        "faq": 0.9,
+        "release_note": 0.85,
+        "known_issue": 0.75,
+        "reviewed_case_learning": 0.55,
+        "raw_ticket_history": 0.0,
+        "raw_chat_transcript": 0.0,
+        "raw_call_transcript": 0.0,
+        "similar_resolved_ticket": 0.0
+      },
+      "balanced": {
+        "policy": 1.0,
+        "official_help_article": 1.0,
+        "knowledge_base": 1.0,
+        "faq": 0.9,
+        "release_note": 0.9,
+        "known_issue": 0.85,
+        "reviewed_case_learning": 0.7,
+        "raw_ticket_history": 0.0,
+        "raw_chat_transcript": 0.0,
+        "raw_call_transcript": 0.0,
+        "similar_resolved_ticket": 0.0
+      },
+      "permissive_internal": {
+        "policy": 1.0,
+        "official_help_article": 1.0,
+        "knowledge_base": 1.0,
+        "faq": 0.95,
+        "release_note": 0.9,
+        "known_issue": 0.85,
+        "reviewed_case_learning": 0.8,
+        "raw_ticket_history": 0.0,
+        "raw_chat_transcript": 0.0,
+        "raw_call_transcript": 0.0,
+        "similar_resolved_ticket": 0.0
+      }
+    }
+  },
+  "retrieval": {
+    "top_k": 20,
+    "reranker_top_k": 5,
+    "parent_section_expansion": true,
+    "sibling_expansion": true,
+    "condition_neighbor_expansion": true,
+    "max_expansion_ratio": 2.0,
+    "cache_enabled": true,
+    "source_type_weights": {},
+    "contextual_retrieval": {
+      "enabled": true,
+      "mode": "deterministic",
+      "include_in_embedding_text": true,
+      "include_in_bm25": true,
+      "keep_display_text_clean": true,
+      "ingestion_cost_usd": 0.0
+    }
+  },
+  "privacy": {
+    "pii_redaction": {
+      "enabled": true,
+      "provider": "presidio",
+      "fallback_behavior": "warn_and_skip_sensitive_sources",
+      "entities": [
+        "PERSON",
+        "EMAIL_ADDRESS",
+        "PHONE_NUMBER",
+        "US_SSN",
+        "CREDIT_CARD",
+        "ACCOUNT_ID",
+        "ADDRESS"
+      ]
+    }
+  }
+}

@@ -1,0 +1,54 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: resolvekit
+      POSTGRES_USER: resolvekit
+      POSTGRES_PASSWORD: resolvekit
+    ports:
+      - "5432:5432"
+    volumes:
+      - resolvekit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolvekit -d resolvekit"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env.docker.example
+        required: true
+      - path: .env.docker
+        required: false
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  onboarding:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env.docker.example
+        required: true
+      - path: .env.docker
+        required: false
+    environment:
+      ONBOARDING_ENV_FILE: .env.docker
+      ONBOARDING_CONTAINER_MODE: "true"
+    ports:
+      - "8765:8765"
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: ["python", "scripts/onboarding_server.py"]
+
+volumes:
+  resolvekit_pgdata:

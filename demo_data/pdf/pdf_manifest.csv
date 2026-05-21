@@ -1,0 +1,11 @@
+file_name,source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk
+pdf_demo_001.pdf,pdf_demo_001,Loopline Password Reset,pdf,canonical,true,true,false,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,faq,login,login,Loopline 2.x,low
+pdf_demo_002.pdf,pdf_demo_002,Loopline Mobile 403 Session Refresh,pdf,approved,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,troubleshooting,login,login,Loopline 2.x,medium
+pdf_demo_003.pdf,pdf_demo_003,Loopline Billing Export Permissions,pdf,approved,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,policy,billing,billing,Loopline 2.x,medium
+pdf_demo_004.pdf,pdf_demo_004,Loopline Api Rate Limit Headers,pdf,canonical,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,api_reference,api,api,Loopline 2.x,low
+pdf_demo_005.pdf,pdf_demo_005,Loopline Webhook Retry Window,pdf,approved,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,troubleshooting,integrations,integrations,Loopline 2.x,medium
+pdf_demo_006.pdf,pdf_demo_006,Loopline Stale Sso Mapping,pdf,approved,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,known_issue,access,access,Loopline 2.x,high
+pdf_demo_007.pdf,pdf_demo_007,Loopline Release 2.4 Routing Change,pdf,canonical,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,release_note,routing,routing,Loopline 2.x,low
+pdf_demo_008.pdf,pdf_demo_008,Loopline Workspace Owner Transfer,pdf,approved,true,true,false,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,policy,permissions,permissions,Loopline 2.x,medium
+pdf_demo_009.pdf,pdf_demo_009,Loopline Offline Mobile Queue,pdf,approved,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,troubleshooting,mobile,mobile,Loopline 2.x,medium
+pdf_demo_010.pdf,pdf_demo_010,Loopline Data Retention Request,pdf,canonical,true,true,true,2026-05-01T00:00:00+00:00,resolvekit-demo,2026-11-01T00:00:00+00:00,policy,compliance,compliance,Loopline 2.x,high

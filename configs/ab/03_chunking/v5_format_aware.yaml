@@ -1,0 +1,27 @@
+variant_id: 03_chunking_v5_format_aware
+stage: chunking
+stage_number: 3
+name: Format-aware
+experiment_mode: offline_replay_only
+changed_lever: different chunking per CSV/XLSX/PDF
+expected_effect: Each format needs different chunking
+primary_metric: source_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  complexity_documented: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  format_aware: true
+config_hash: c31b12781bd163c3

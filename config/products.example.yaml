@@ -1,0 +1,80 @@
+{
+  "products": {
+    "example_product": {
+      "display_name": "Example Product",
+      "slug": "example_product",
+      "aliases": [
+        "demo",
+        "example",
+        "example app"
+      ],
+      "default_product": true,
+      "platforms": {
+        "website": {
+          "normalized": "website",
+          "aliases": [
+            "web",
+            "browser",
+            "site",
+            "reports",
+            "exports",
+            "export"
+          ],
+          "enabled": true
+        },
+        "mobile_app": {
+          "normalized": "app",
+          "aliases": [
+            "mobile",
+            "app",
+            "ios",
+            "android",
+            "push notifications",
+            "badge",
+            "queued reply"
+          ],
+          "enabled": true
+        }
+      },
+      "roles": {
+        "required": false,
+        "values": [
+          {
+            "name": "admin",
+            "aliases": [
+              "administrator"
+            ]
+          },
+          {
+            "name": "compliance_manager",
+            "aliases": [
+              "compliance",
+              "auditor"
+            ]
+          },
+          {
+            "name": "account_owner",
+            "aliases": [
+              "owner",
+              "billing owner"
+            ]
+          },
+          {
+            "name": "agent",
+            "aliases": [
+              "support agent",
+              "user"
+            ]
+          },
+          {
+            "name": "manager",
+            "aliases": [
+              "supervisor",
+              "lead"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

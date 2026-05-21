@@ -1,0 +1,27 @@
+variant_id: 06_query_construction_v5_sparse_dense_split
+stage: query_construction
+stage_number: 6
+name: Sparse+dense split
+experiment_mode: offline_replay_only
+changed_lever: separate BM25 terms from dense natural query
+expected_effect: Better hybrid retrieval
+primary_metric: source_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  complexity_documented: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  query_mode: sparse_dense_split
+config_hash: 5c563aba042b0dbf

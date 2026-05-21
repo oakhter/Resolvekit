@@ -1,0 +1,30 @@
+# Core
+fastapi
+uvicorn
+python-dotenv
+
+# Model Providers
+google-genai
+anthropic
+openai
+
+# Database & Retrieval
+psycopg2-binary
+rank-bm25
+
+# Reranking
+sentence-transformers
+
+# Utilities
+httpx
+pydantic
+PyYAML
+beautifulsoup4
+lxml
+numpy
+tqdm
+pandas
+matplotlib
+
+# QA / Testing
+pytest

@@ -1,0 +1,29 @@
+variant_id: 04_metadata_validation_v3_authority_required
+stage: metadata_validation
+stage_number: 4
+name: Authority required
+experiment_mode: offline_replay_only
+changed_lever: require source authority and doc type
+expected_effect: Better conflict handling
+primary_metric: source_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  coverage_floor_tracked: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  required_fields:
+  - source_authority
+  - doc_type
+config_hash: f4d42a3e7586196d

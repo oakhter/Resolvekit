@@ -1,0 +1,52 @@
+{
+  "knowledge_base:baseline_diff": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:conversation_access": ["knowledge_base:kb_configure_team_inbox_routing"],
+  "knowledge_base:conversation_exports": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:eval_budgets": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:export_link_expiry": [
+    "knowledge_base:kb_export_conversation_history",
+    "policies:kb_data_export_eligibility"
+  ],
+  "knowledge_base:html_connector": ["knowledge_base:kb_configure_team_inbox_routing"],
+  "knowledge_base:invoice_download": ["policies:kb_billing_contact_changes"],
+  "knowledge_base:mobile_login_403": ["knowledge_base:kb_mobile_login_403_after_update"],
+  "knowledge_base:mobile_push_team_inbox": ["knowledge_base:kb_mobile_notification_troubleshooting"],
+  "knowledge_base:pinned_sources": ["knowledge_base:kb_configure_team_inbox_routing"],
+  "knowledge_base:queued_mobile_replies": [
+    "knowledge_base:kb_mobile_offline_queue",
+    "known_issues:kb_mobile_queued_reply_badge"
+  ],
+  "knowledge_base:response_cache": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:routing_preview": [
+    "knowledge_base:kb_configure_team_inbox_routing",
+    "release_notes:rn_example_webapp_2026_04_15"
+  ],
+  "knowledge_base:routing_rules": ["knowledge_base:kb_configure_team_inbox_routing"],
+  "knowledge_base:session_role_refresh": ["knowledge_base:kb_website_session_timeout"],
+  "knowledge_base:source_freshness": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:source_preview": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:source_quality": ["knowledge_base:kb_export_conversation_history"],
+  "knowledge_base:support_modes": ["knowledge_base:kb_export_conversation_history"],
+  "known_issues:mobile_badge_delay": ["known_issues:kb_delayed_mobile_badge_counts"],
+  "known_issues:mobile_push": ["knowledge_base:kb_mobile_notification_troubleshooting"],
+  "known_issues:mobile_push_team_inbox": ["knowledge_base:kb_mobile_notification_troubleshooting"],
+  "policies:account_actions": ["policies:kb_billing_contact_changes"],
+  "policies:billing_contact": ["policies:kb_billing_contact_changes"],
+  "policies:billing_contact_exception": ["policies:kb_billing_contact_changes"],
+  "policies:citation_validation": ["policies:kb_data_export_eligibility"],
+  "policies:compliance_export": ["policies:kb_data_export_eligibility"],
+  "policies:conversation_exports": ["policies:kb_data_export_eligibility"],
+  "policies:pii_redaction": ["policies:kb_data_export_eligibility"],
+  "policies:private_notes_export": [
+    "knowledge_base:kb_export_conversation_history",
+    "release_notes:rn_example_webapp_2026_03_28"
+  ],
+  "policies:release_gates": ["policies:kb_data_export_eligibility"],
+  "policies:source_attribution": ["policies:kb_data_export_eligibility"],
+  "policies:source_safety": ["policies:kb_data_export_eligibility"],
+  "policies:trial_retention": ["policies:kb_trial_workspace_retention"],
+  "release_notes:mobile_push_release": [
+    "release_notes:rn_example_mobile_2026_04_08",
+    "release_notes:rn_example_mobile_2026_04_22"
+  ]
+}

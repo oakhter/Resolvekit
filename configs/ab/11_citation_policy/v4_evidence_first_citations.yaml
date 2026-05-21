@@ -1,0 +1,27 @@
+variant_id: 11_citation_policy_v4_evidence_first_citations
+stage: citation_policy
+stage_number: 11
+name: Evidence-first citations
+experiment_mode: offline_replay_only
+changed_lever: only cite directly supported claims
+expected_effect: Reduces unsupported claims
+primary_metric: citation_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  completeness_tracked: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  citation_mode: evidence_first
+config_hash: 5f65af2e8e914679

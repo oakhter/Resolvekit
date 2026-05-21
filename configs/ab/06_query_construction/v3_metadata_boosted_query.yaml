@@ -1,0 +1,26 @@
+variant_id: 06_query_construction_v3_metadata_boosted_query
+stage: query_construction
+stage_number: 6
+name: Metadata-boosted query
+experiment_mode: offline_replay_only
+changed_lever: adds issue_class/product_area/version hints
+expected_effect: Improves match quality
+primary_metric: source_precision
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 0
+  cost_regression_max_pct: 15
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  query_mode: metadata_boosted
+config_hash: 038ca4700566be3d

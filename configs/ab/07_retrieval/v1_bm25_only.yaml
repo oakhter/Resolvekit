@@ -1,0 +1,27 @@
+variant_id: 07_retrieval_v1_bm25_only
+stage: retrieval
+stage_number: 7
+name: BM25-only
+experiment_mode: offline_replay_only
+changed_lever: keyword retrieval only
+expected_effect: Strong for error codes/API terms
+primary_metric: retrieval_recall_at_5
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  source_precision_tracked: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  retrieval_mode: bm25
+config_hash: 538385b3374791fa

@@ -1,0 +1,29 @@
+variant_id: 02_kb_loading_v3_pdf_baseline
+stage: kb_loading
+stage_number: 2
+name: PDF-only
+experiment_mode: offline_replay_only
+changed_lever: use only born-digital PDF demo KB
+expected_effect: Tests PDF extraction quality
+primary_metric: source_validation_pass_rate
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  scanned_pdf_accepted_max: 0
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  source_format_filter:
+  - pdf
+  pdf_text_required: true
+config_hash: 5d10635ca815555a

@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResolveKit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Albert+Sans:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent:#2563eb; --accent-hover:#1d4ed8; --accent-light:#60a5fa; --teal:#0d9488; --orange:#d97706;
+  --green:#16a34a; --yellow:#ca8a04; --red:#dc2626; --mono:'IBM Plex Mono', monospace;
+  --sans:'Albert Sans', system-ui, sans-serif; --radius:10px; --radius-sm:6px;
+  --transition:0.2s ease;
+}
+[data-theme="dark"] {
+  --accent:#3b82f6; --accent-hover:#2563eb; --accent-light:#93c5fd; --teal:#2dd4bf; --orange:#fb923c;
+  --green:#22c55e; --yellow:#facc15; --red:#f87171;
+  --bg-deep:#0b1120; --bg-surface:#111827; --bg-card:#182032;
+  --bg-input:rgba(148,163,184,0.10); --bg-block:rgba(148,163,184,0.07);
+  --bg-block-hdr:rgba(148,163,184,0.10); --bg-hover:rgba(59,130,246,0.14);
+  --text-pri:#f8fafc; --text-sec:#cbd5e1;
+  --text-muted:#94a3b8; --border:rgba(148,163,184,0.18);
+  --border-hi:rgba(148,163,184,0.30); --scrollbar:rgba(148,163,184,0.28);
+  --shadow:rgba(0,0,0,0.40);
+}
+[data-theme="light"] {
+  --accent:#2563eb; --accent-hover:#1d4ed8; --accent-light:#2563eb; --teal:#0f766e; --orange:#b45309;
+  --green:#15803d; --yellow:#a16207; --red:#b91c1c;
+  --bg-deep:#f8fafc; --bg-surface:#ffffff; --bg-card:#ffffff;
+  --bg-input:#f8fafc; --bg-block:#f8fafc;
+  --bg-block-hdr:#f1f5f9; --bg-hover:#eff6ff;
+  --text-pri:#0f172a; --text-sec:#475569; --text-muted:#64748b;
+  --border:#e2e8f0; --border-hi:#cbd5e1;
+  --scrollbar:#cbd5e1; --shadow:rgba(15,23,42,0.08);
+}
+html { transition: background var(--transition), color var(--transition); }
+body {
+  font-family:var(--sans); background:var(--bg-deep); color:var(--text-pri);
+  min-height:100vh; display:flex; flex-direction:column; font-size:15px; line-height:1.6;
+}
+#root { min-height:100vh; display:flex; flex-direction:column; }
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--scrollbar); border-radius:4px; }
+header, footer {
+  background:var(--bg-surface); border-color:var(--border); flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+}
+header { padding:18px 40px; border-bottom:1px solid var(--border); }
+footer { padding:13px 40px; border-top:1px solid var(--border); font-size:11px; color:var(--text-muted); }
+.logo-text { font-size:15px; font-weight:700; color:var(--text-pri); }
+.logo-sub { font-size:11px; color:var(--text-muted); margin-top:1px; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.nav-link, .theme-btn, .btn-eye, .copy-btn {
+  background:var(--bg-input); border:1px solid var(--border-hi); color:var(--text-sec);
+  border-radius:var(--radius-sm); cursor:pointer; transition:background var(--transition), color var(--transition);
+}
+.nav-link {
+  height:34px; display:flex; align-items:center; padding:0 12px; text-decoration:none;
+  font-size:11px; font-weight:700; font-family:var(--mono);
+}
+.theme-btn { width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+.nav-link:hover, .theme-btn:hover, .btn-eye:hover, .copy-btn:hover { background:var(--bg-hover); color:var(--text-pri); }
+.status-pill {
+  display:flex; align-items:center; gap:7px; border-radius:20px; padding:5px 13px;
+  font-size:11px; font-weight:600; font-family:var(--mono);
+}
+.status-pill.ready { background:rgba(13,148,136,0.12); border:1px solid rgba(13,148,136,0.28); color:var(--teal); }
+.status-pill.processing { background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); color:var(--accent-light); }
+.status-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.status-pill.ready .status-dot { animation:pulse 2s infinite; }
+.status-pill.processing .status-dot { animation:pulsefast 0.7s infinite; }
+main {
+  flex:1; display:grid; grid-template-columns:minmax(320px,0.9fr) minmax(360px,1.1fr) minmax(300px,0.9fr); gap:24px; max-width:1680px;
+  width:100%; margin:0 auto; padding:32px 40px; min-height:0;
+}
+.panel {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+  overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 12px var(--shadow);
+}
+.panel-header {
+  padding:16px 22px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.panel-label {
+  font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--teal); font-family:var(--mono);
+}
+.panel-title { font-size:14px; font-weight:700; color:var(--text-pri); margin-top:3px; }
+.panel-body { padding:22px; flex:1; display:flex; flex-direction:column; gap:16px; overflow-y:auto; }
+.field { display:flex; flex-direction:column; gap:7px; }
+.field-top { display:flex; justify-content:space-between; align-items:baseline; }
+.field label {
+  font-size:11px; font-weight:600; color:var(--text-sec); text-transform:uppercase;
+  letter-spacing:0.09em; font-family:var(--mono);
+}
+.char-count { font-size:10px; color:var(--text-muted); font-family:var(--mono); }
+.char-count.warn { color:var(--orange); }
+.field textarea, .field input, .field select {
+  background:var(--bg-input); border:1px solid var(--border-hi); border-radius:var(--radius-sm);
+  padding:12px 14px; color:var(--text-pri); font-family:var(--sans); font-size:14px;
+  line-height:1.65; resize:none; transition:border-color var(--transition); outline:none; width:100%;
+}
+.field textarea:focus, .field input:focus, .field select:focus { border-color:var(--accent-light); }
+.field textarea { min-height:200px; }
+.field select { height:44px; cursor:pointer; appearance:none; }
+.field select:disabled { opacity:0.45; cursor:not-allowed; }
+.api-row { display:flex; gap:8px; align-items:center; }
+.api-row input { flex:1; height:40px; font-family:var(--mono); font-size:12px; }
+.btn-eye { padding:0 12px; height:40px; flex-shrink:0; }
+.btn-submit, .btn-clear {
+  border-radius:var(--radius-sm); font-family:var(--sans); cursor:pointer; width:100%;
+  transition:background var(--transition), color var(--transition), transform 0.1s;
+}
+.btn-submit {
+  background:var(--accent); color:#fff; border:none; padding:13px 24px; font-size:14px;
+  font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; position:relative;
+}
+.btn-submit:hover:not(:disabled) { background:var(--accent-hover); }
+.btn-submit:active:not(:disabled) { transform:scale(0.99); }
+.btn-submit:disabled { opacity:0.55; cursor:not-allowed; }
+.btn-hint { position:absolute; right:14px; font-size:10px; font-family:var(--mono); opacity:0.4; }
+.btn-clear {
+  background:transparent; color:var(--text-sec); border:1px solid var(--border-hi);
+  padding:10px 24px; font-size:13px; font-weight:600;
+}
+.btn-clear:hover { background:var(--bg-hover); color:var(--text-pri); }
+.spinner {
+  width:14px; height:14px; border:2px solid rgba(255,255,255,0.25); border-top-color:#fff;
+  border-radius:50%; animation:spin 0.7s linear infinite; display:none; flex-shrink:0;
+}
+.error-box {
+  background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.22);
+  border-radius:var(--radius-sm); padding:12px 14px; font-size:13px; color:var(--orange);
+  font-family:var(--mono); display:none; animation:slideDown 0.2s ease;
+}
+.onboarding-note {
+  background:rgba(13,148,136,0.10); border:1px solid rgba(13,148,136,0.24);
+  border-radius:var(--radius-sm); padding:12px 14px; color:var(--text-sec);
+  font-size:12px; line-height:1.55;
+}
+.onboarding-note strong { color:var(--teal); display:block; font-size:11px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:3px; }
+.results-empty, .processing-state {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; color:var(--text-muted); font-size:14px; padding:40px; text-align:center;
+}
+.empty-icon {
+  width:52px; height:52px; border:1px solid var(--border); border-radius:12px;
+  display:flex; align-items:center; justify-content:center; font-size:22px; background:var(--bg-block);
+}
+.empty-hint, .processing-label { font-size:11px; color:var(--text-muted); font-family:var(--mono); }
+.pipeline-steps { display:flex; flex-direction:column; gap:10px; width:100%; max-width:270px; }
+.pipe-step {
+  display:flex; align-items:center; gap:10px; font-size:12px; font-family:var(--mono);
+  color:var(--text-muted); opacity:0.32; transition:opacity 0.35s, color 0.35s;
+}
+.pipe-step.active { opacity:1; color:var(--accent-light); }
+.pipe-step.done { opacity:0.65; color:var(--teal); }
+.pipe-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.pipe-step.active .pipe-dot { animation:pulsefast 0.7s infinite; }
+.cache-tag { font-size:11px; font-family:var(--mono); margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+.cache-hit { color:var(--green); }
+.cache-live { color:var(--text-muted); }
+.resolution { display:flex; flex-direction:column; gap:10px; }
+.res-block {
+  background:var(--bg-block); border:1px solid var(--border); border-radius:var(--radius-sm);
+  overflow:hidden; opacity:0; animation:fadeSlideIn 0.35s ease forwards;
+}
+.res-block-header {
+  padding:9px 14px; background:var(--bg-block-hdr); border-bottom:1px solid var(--border);
+  font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text-muted); font-family:var(--mono); display:flex; align-items:center;
+  justify-content:space-between; gap:8px; cursor:pointer;
+}
+.res-block-body { padding:14px 16px; font-size:13.5px; line-height:1.8; color:var(--text-sec); white-space:pre-wrap; }
+.res-block-body.mono { font-family:var(--mono); font-size:12px; }
+.res-block.collapsed .res-block-body { display:none; }
+.res-block.expanded .res-toggle::before { content:"-"; }
+.res-block.collapsed .res-toggle::before { content:"+"; }
+.email-textarea {
+  width:100%; padding:14px 16px; background:transparent; border:none; outline:none; resize:vertical;
+  font-family:var(--sans); font-size:13.5px; line-height:1.8; color:var(--text-sec); min-height:180px;
+}
+.email-textarea:focus { color:var(--text-pri); }
+.draft-note {
+  padding:12px 16px; border-bottom:1px solid var(--border); color:var(--orange);
+  background:rgba(217,119,6,0.08); font-size:12px; line-height:1.55;
+}
+.edit-badge {
+  font-size:9px; font-weight:700; letter-spacing:0.05em; background:rgba(202,138,4,0.14);
+  color:var(--yellow); border:1px solid rgba(202,138,4,0.25); border-radius:4px; padding:1px 6px; font-family:var(--mono);
+}
+.copy-btn { padding:2px 9px; font-size:9px; font-family:var(--mono); }
+.badge { font-size:10px; font-weight:700; padding:2px 9px; border-radius:20px; font-family:var(--mono); }
+.badge-high { background:rgba(22,163,74,0.12); color:var(--green); border:1px solid rgba(22,163,74,0.25); }
+.badge-medium { background:rgba(202,138,4,0.12); color:var(--yellow); border:1px solid rgba(202,138,4,0.25); }
+.badge-low { background:rgba(220,38,38,0.10); color:var(--red); border:1px solid rgba(220,38,38,0.25); }
+.confidence-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.confidence-label { font-size:9px; font-weight:700; color:var(--text-muted); letter-spacing:0.12em; text-transform:uppercase; font-family:var(--mono); }
+.feedback-row { display:flex; align-items:center; gap:14px; padding:14px 16px; border-top:1px solid var(--border); }
+.feedback-label { font-size:11px; color:var(--text-muted); font-family:var(--mono); white-space:nowrap; }
+.feedback-controls { display:flex; align-items:center; gap:8px; flex:1; min-width:220px; }
+.feedback-controls select, .feedback-controls input {
+  background:var(--bg-input); border:1px solid var(--border-hi); border-radius:var(--radius-sm);
+  color:var(--text-sec); height:32px; padding:0 9px; font-size:12px; min-width:0;
+}
+.feedback-controls input { flex:1; }
+.thumb-group { display:flex; gap:8px; }
+.thumb-btn {
+  display:flex; align-items:center; gap:5px; background:var(--bg-input); border:1px solid var(--border-hi);
+  border-radius:var(--radius-sm); padding:5px 12px; font-size:12px; font-family:var(--sans);
+  font-weight:600; color:var(--text-sec); cursor:pointer;
+}
+.thumb-btn:hover { background:var(--bg-hover); color:var(--text-pri); }
+.thumb-btn.selected-up { background:rgba(22,163,74,0.12); color:var(--green); border-color:rgba(22,163,74,0.3); }
+.thumb-btn.selected-down { background:rgba(220,38,38,0.10); color:var(--red); border-color:rgba(220,38,38,0.25); }
+.thumb-btn:disabled { opacity:0.5; cursor:default; }
+.feedback-ack { font-size:11px; color:var(--teal); font-family:var(--mono); display:none; }
+.meta-bar {
+  padding:10px 22px; border-top:1px solid var(--border); display:flex; align-items:center;
+  gap:10px; flex-wrap:wrap; font-size:10px; font-family:var(--mono); color:var(--text-muted); flex-shrink:0;
+}
+.meta-dot { width:5px; height:5px; border-radius:50%; background:var(--teal); flex-shrink:0; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+@keyframes pulsefast { 0%,100%{opacity:1} 50%{opacity:0.15} }
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes slideDown { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeSlideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+@media (max-width:960px) {
+  main { grid-template-columns:1fr; padding:20px; }
+  header, footer { padding:16px 20px; }
+  .panel-body { padding:18px; }
+}
+@media (max-width:600px) {
+  main { padding:14px; gap:16px; }
+  .feedback-row { flex-wrap:wrap; }
+  .logo-sub { display:none; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+const h = React.createElement;
+const PIPELINE = ["Ingesting ticket", "Building search query", "Retrieving knowledge base", "Reranking results", "Generating resolution"];
+const DEFAULT_DEMO_TICKET = "Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.";
+const DEMO_CASES = [
+  ["", "Select demo case"],
+  [DEFAULT_DEMO_TICKET, "Green / mobile 403"],
+  ["An agent is assigned to the Showroom Support team inbox but is not getting mobile push notifications for new conversations. Device notifications are enabled. What should be checked next?", "Green / push notification"],
+  ["Customer reports replies stay queued in the mobile app during unstable connectivity. What should support tell them?", "Green / offline queue"],
+  ["Customer asks for a refund policy exception that is not in approved sources.", "Red / policy exception"],
+  ["Customer asks support to confirm a security breach using internal notes only.", "Red / unsafe source"],
+];
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: "" };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error: error?.message || "Unknown UI render error" };
+  }
+
+  componentDidCatch(error) {
+    console.error("UI render error", error);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return h("div", { className: "results-empty" },
+      h("div", { className: "empty-icon" }, "!"),
+      h("div", null, "UI render error"),
+      h("div", { className: "empty-hint" }, this.state.error)
+    );
+  }
+}
+
+function labelize(value) {
+  return String(value || "-").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function productDisplayName(products, value) {
+  const raw = String(value || "");
+  const match = Object.entries(products || {}).find(([slug, product]) =>
+    raw === slug || raw === product.slug || raw === product.display_name
+  );
+  return match ? (match[1].display_name || match[1].slug || match[0]) : labelize(raw);
+}
+
+function displayValue(value) {
+  if (Array.isArray(value)) return value.map(displayValue).join("\n");
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
+  return value == null || value === "" ? "-" : String(value);
+}
+
+function normalizeForFingerprint(text) {
+  return (text || "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizedPhrases(values) {
+  return values
+    .filter(Boolean)
+    .map(value => normalizeForFingerprint(String(value).replace(/_/g, " ")))
+    .filter(Boolean);
+}
+
+function textHasPhrase(text, phrase) {
+  const normalizedText = ` ${normalizeForFingerprint(text)} `;
+  const normalizedPhrase = normalizeForFingerprint(String(phrase).replace(/_/g, " "));
+  return normalizedPhrase && normalizedText.includes(` ${normalizedPhrase} `);
+}
+
+function parseTicketContextBlock(value) {
+  const context = {};
+  const body = [];
+  String(value || "").split(/\r?\n/).forEach(line => {
+    const match = line.match(/^\s*(product|permission|permission level|role|access|access channel|channel|platform|website\/mobile app)\s*:\s*(.*?)\s*$/i);
+    if (!match) {
+      body.push(line);
+      return;
+    }
+    const key = match[1].toLowerCase();
+    const val = match[2].trim();
+    if (["product"].includes(key)) context.product = val;
+    else if (["permission", "permission level", "role"].includes(key)) context.permissionLevel = val;
+    else if (["access", "access channel", "channel", "platform", "website/mobile app"].includes(key)) context.accessChannel = val;
+  });
+  return { context, ticket: body.join("\n").trim() || value };
+}
+
+function buildRequestFingerprint(ticket, product, permissionLevel, accessChannel) {
+  return JSON.stringify({
+    ticket: normalizeForFingerprint(ticket),
+    product: (product || "").trim().toLowerCase(),
+    permission_level: (permissionLevel || "").trim().toLowerCase(),
+    access_channel: (accessChannel || "").trim().toLowerCase(),
+  });
+}
+
+function confidenceClass(value) {
+  const c = String(value || "LOW").toUpperCase();
+  if (c === "HIGH") return "badge-high";
+  if (c === "MEDIUM") return "badge-medium";
+  return "badge-low";
+}
+
+function outputSectionEnabled(resolution, fallbackPrefs, key) {
+  const prefs = resolution.output_preferences || fallbackPrefs || {};
+  const mode = prefs.mode || "resolution_full";
+  const presets = {
+    resolution_full: {
+      issue_classification:true, diagnosis:true, root_cause:true, resolution_steps:true,
+      sources:true, confidence:true, draft_email:true, validation_flags:true,
+    },
+    email_draft_only: {
+      issue_classification:false, diagnosis:false, root_cause:false, resolution_steps:false,
+      sources:false, confidence:false, draft_email:true, validation_flags:false,
+    },
+    internal_agent_assist: {
+      issue_classification:true, diagnosis:true, root_cause:true, resolution_steps:true,
+      sources:true, confidence:true, draft_email:false, validation_flags:true,
+    },
+    diagnosis_only: {
+      issue_classification:true, diagnosis:true, root_cause:true, resolution_steps:false,
+      sources:true, confidence:true, draft_email:false, validation_flags:false,
+    },
+  };
+  if (mode === "custom") return prefs.include?.[key] !== false;
+  return presets[mode]?.[key] !== false;
+}
+
+function App() {
+  const [theme, setTheme] = React.useState(localStorage.getItem("theme") || "dark");
+  const [apiKey, setApiKey] = React.useState(localStorage.getItem("ai_bot_api_key") || sessionStorage.getItem("ai_bot_api_key") || "");
+  const [showKey, setShowKey] = React.useState(false);
+  const [products, setProducts] = React.useState({});
+  const [outputPrefs, setOutputPrefs] = React.useState({ mode: "resolution_full", include: {} });
+  const [ticket, setTicket] = React.useState(DEFAULT_DEMO_TICKET);
+  const [product, setProduct] = React.useState("");
+  const [permissionLevel, setPermissionLevel] = React.useState("agent");
+  const [accessChannel, setAccessChannel] = React.useState("mobile_app");
+  const [resolution, setResolution] = React.useState(null);
+  const [originalEmail, setOriginalEmail] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [responseTimeMs, setResponseTimeMs] = React.useState(0);
+  const [lastFingerprint, setLastFingerprint] = React.useState("");
+  const [processing, setProcessing] = React.useState(false);
+  const [pipelineStep, setPipelineStep] = React.useState(0);
+  const [error, setError] = React.useState("");
+  const [feedback, setFeedback] = React.useState("");
+  const [feedbackReason, setFeedbackReason] = React.useState("too_vague");
+  const [feedbackComment, setFeedbackComment] = React.useState("");
+  const [agentAction, setAgentAction] = React.useState("pending");
+  const [roleInfo, setRoleInfo] = React.useState({ role: "", permissions: [], config_hash: "" });
+  const [clock, setClock] = React.useState(new Date());
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  React.useEffect(() => {
+    let active = true;
+    let configuratorApiKey = localStorage.getItem("resolvekit_configurator_api_key") || "";
+    async function loadConfig() {
+      try {
+        const headers = configuratorApiKey ? { "x-api-key": configuratorApiKey } : {};
+        const res = await fetch("/configurator/config", { headers });
+        const data = await res.json();
+        if (!active) return;
+        const loadedProducts = data.config?.products?.products || {};
+        setProducts(loadedProducts);
+        setOutputPrefs(data.config?.output?.output || { mode: "resolution_full", include: {} });
+        const defaultProduct = Object.entries(loadedProducts).find(([, p]) => p.default_product) || Object.entries(loadedProducts)[0];
+        if (defaultProduct) setProduct(defaultProduct[1].slug || defaultProduct[0]);
+      } catch {}
+    }
+    async function loadDevSettings() {
+      try {
+        const res = await fetch("/configurator/dev-settings");
+        const data = await res.json();
+        if (active && data.prefill_api_key && data.api_key) {
+          setApiKey(data.api_key);
+          localStorage.setItem("ai_bot_api_key", data.api_key);
+        }
+        if (active && data.prefill_api_key && data.configurator_api_key) {
+          configuratorApiKey = data.configurator_api_key;
+          localStorage.setItem("resolvekit_configurator_api_key", data.configurator_api_key);
+        }
+      } catch {}
+    }
+    loadDevSettings().then(loadConfig);
+    const tick = setInterval(() => setClock(new Date()), 1000);
+    const configTick = setInterval(loadConfig, 5000);
+    window.addEventListener("focus", loadConfig);
+    return () => {
+      active = false;
+      clearInterval(tick);
+      clearInterval(configTick);
+      window.removeEventListener("focus", loadConfig);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (apiKey) localStorage.setItem("ai_bot_api_key", apiKey);
+    else localStorage.removeItem("ai_bot_api_key");
+  }, [apiKey]);
+
+  React.useEffect(() => {
+    let active = true;
+    async function loadRole() {
+      if (!apiKey.trim()) {
+        setRoleInfo({ role: "", permissions: [], config_hash: "" });
+        return;
+      }
+      try {
+        const res = await fetch("/api/me", { headers: { "x-api-key": apiKey.trim() } });
+        const data = await res.json();
+        if (active && data.status === "ok") setRoleInfo({ role: data.role || "", permissions: data.permissions || [], config_hash: data.config_hash || "" });
+      } catch {}
+    }
+    loadRole();
+    return () => { active = false; };
+  }, [apiKey]);
+
+  React.useEffect(() => {
+    if (!processing) return;
+    const timer = setInterval(() => setPipelineStep(step => Math.min(step + 1, PIPELINE.length - 1)), 1300);
+    return () => clearInterval(timer);
+  }, [processing]);
+
+  const productConfig = React.useMemo(() => {
+    return Object.values(products).find(p => (p.slug || "") === product) || products[product] || null;
+  }, [products, product]);
+
+  const roles = (productConfig?.roles?.values || [])
+    .map(role => typeof role === "string" ? { name: role, aliases: [] } : role)
+    .filter(role => role.name);
+  const platforms = Object.entries(productConfig?.platforms || {}).filter(([, platform]) => platform.enabled !== false);
+
+  function updateTicket(value) {
+    const parsed = parseTicketContextBlock(value);
+    const cleanValue = parsed.ticket;
+    const pastedContext = parsed.context;
+    setTicket(cleanValue);
+    let nextProductConfig = productConfig;
+    if (pastedContext.product) {
+      const match = Object.entries(products).find(([slug, p]) =>
+        normalizedPhrases([slug, p.slug, p.display_name, ...(p.aliases || [])]).some(alias => textHasPhrase(pastedContext.product, alias))
+      );
+      if (match) {
+        setProduct(match[1].slug || match[0]);
+        nextProductConfig = match[1];
+      }
+    } else if (!product) {
+      const match = Object.entries(products).find(([slug, p]) =>
+        normalizedPhrases([slug, p.slug, p.display_name, ...(p.aliases || [])]).some(alias => textHasPhrase(cleanValue, alias))
+      );
+      if (match) {
+        setProduct(match[1].slug || match[0]);
+        nextProductConfig = match[1];
+      }
+    }
+    if (pastedContext.accessChannel && nextProductConfig) {
+      const channel = Object.entries(nextProductConfig.platforms || {}).find(([key, platform]) =>
+        normalizedPhrases([key, platform.normalized, platform.label, ...(platform.aliases || [])]).some(alias => textHasPhrase(pastedContext.accessChannel, alias))
+      );
+      if (channel) setAccessChannel(channel[0]);
+    } else if (!accessChannel && nextProductConfig) {
+      const channel = Object.entries(nextProductConfig.platforms || {}).find(([key, platform]) =>
+        normalizedPhrases([key, platform.normalized, platform.label, ...(platform.aliases || [])]).some(alias => textHasPhrase(cleanValue, alias))
+      );
+      if (channel) setAccessChannel(channel[0]);
+    }
+    if (pastedContext.permissionLevel && nextProductConfig) {
+      const role = (nextProductConfig.roles?.values || [])
+        .map(item => typeof item === "string" ? { name: item, aliases: [] } : item)
+        .find(item =>
+          normalizedPhrases([item.name, ...(item.aliases || [])]).some(alias => textHasPhrase(pastedContext.permissionLevel, alias))
+        );
+      if (role) setPermissionLevel(role.name);
+    } else if (!permissionLevel && nextProductConfig) {
+      const role = (nextProductConfig.roles?.values || [])
+        .map(item => typeof item === "string" ? { name: item, aliases: [] } : item)
+        .find(item =>
+          normalizedPhrases([item.name, ...(item.aliases || [])]).some(alias => textHasPhrase(cleanValue, alias))
+        );
+      if (role) setPermissionLevel(role.name);
+    }
+  }
+
+  function clearAll() {
+    setTicket("");
+    setPermissionLevel("");
+    setAccessChannel("");
+    setResolution(null);
+    setOriginalEmail("");
+    setEmail("");
+    setLastFingerprint("");
+    setError("");
+    setFeedback("");
+    setFeedbackReason("too_vague");
+    setFeedbackComment("");
+    setAgentAction("pending");
+  }
+
+  async function submitTicket() {
+    if (processing) return;
+    setError("");
+    const cleanTicket = ticket.trim();
+    const cleanKey = apiKey.trim();
+    if (!cleanTicket) { setError("Please enter a ticket before submitting."); return; }
+    if (!cleanKey) { setError("API key is required."); return; }
+
+    const requestFingerprint = buildRequestFingerprint(cleanTicket, product, permissionLevel, accessChannel);
+    const start = Date.now();
+
+    setProcessing(true);
+    setPipelineStep(0);
+    setFeedback("");
+    setFeedbackReason("too_vague");
+    setFeedbackComment("");
+    setAgentAction("pending");
+    try {
+      const res = await fetch("/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": cleanKey },
+        body: JSON.stringify({
+          ticket: cleanTicket,
+          support_ops_mode: "query",
+          product,
+          permission_level: permissionLevel,
+          access_channel: accessChannel,
+          request_fingerprint: requestFingerprint,
+          similarity_threshold: "none",
+          pinned_source_ids: [],
+        }),
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) throw new Error(`Server returned a non-JSON response (${res.status}). Is the server running?`);
+      const data = await res.json();
+      if (res.status === 401) {
+        localStorage.removeItem("ai_bot_api_key");
+        sessionStorage.removeItem("ai_bot_api_key");
+        throw new Error("Unauthorized: the API key in this browser does not match API_KEY in .env. Refresh the page so local dev prefill can reload it, or paste the current API_KEY.");
+      }
+      if (!res.ok) throw new Error(data.detail || `Server error ${res.status}`);
+      const nextResolution = data.resolution || {};
+      setResolution(nextResolution);
+      setOriginalEmail(nextResolution.draft_email || "");
+      setEmail(nextResolution.draft_email || "");
+      setLastFingerprint(requestFingerprint);
+      setResponseTimeMs(Date.now() - start);
+    } catch (e) {
+      const message = e?.message || "";
+      if (message === "Load failed" || message === "Failed to fetch") {
+        setError("Request could not reach the app server. Check that `python start.py` is still running, then refresh and try again.");
+      } else {
+        setError(message || "Request failed. Check the server logs for details.");
+      }
+      if (!resolution) setResponseTimeMs(0);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function rate(rating) {
+    if (!resolution || feedback) return;
+    if (agentAction === "pending") {
+      setError("Choose agent action before recording feedback.");
+      return;
+    }
+    setFeedback(rating);
+    const usage = resolution.usage_summary || {};
+    const requestContext = resolution.request_context || {};
+    const signals = resolution.retrieval_signals || {};
+    const validation = resolution.validation || {};
+    const reason = rating === "thumbs_down" ? feedbackReason : "";
+    const citations = (validation.citations || []).map(citation => citation.source_id || citation.evidence_id || citation.citation_id).filter(Boolean);
+    try {
+      await fetch("/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey.trim() },
+        body: JSON.stringify({
+          cache_key: resolution.cache_key || "",
+          ticket_preview: ticket.substring(0, 200),
+          confidence: resolution.confidence || "",
+          rating,
+          email_was_edited: email !== originalEmail,
+          original_email: originalEmail,
+          edited_email: email !== originalEmail ? email : "",
+          response_time_ms: responseTimeMs,
+          from_cache: resolution.from_cache || false,
+          product: requestContext.product || product,
+          permission_level: requestContext.permission_level || permissionLevel,
+          access_channel: requestContext.access_channel || accessChannel,
+          request_fingerprint: resolution.request_fingerprint || lastFingerprint,
+          total_tokens: usage.total_tokens || 0,
+          query_tokens_in: usage.query_tokens_in || 0,
+          query_tokens_out: usage.query_tokens_out || 0,
+          response_tokens_in: usage.response_tokens_in || 0,
+          response_tokens_out: usage.response_tokens_out || 0,
+          retrieved_chunk_ids: JSON.stringify(signals.retrieved_chunk_ids || []),
+          rerank_scores: JSON.stringify(signals.rerank_scores || []),
+          top_score: signals.top_score || 0,
+          score_gap: signals.score_gap || 0,
+          used_retrieval_cache: signals.used_retrieval_cache || false,
+          used_response_cache: signals.used_response_cache || resolution.from_cache || false,
+          routing_strategy: resolution.validation?.strategist?.route || resolution.confidence_scorer?.route || "",
+          eval_faithfulness: resolution.eval_score?.faithfulness || "",
+          eval_completeness: resolution.eval_score?.completeness || "",
+          response_id: resolution.response_id || "",
+          draft_run_id: resolution.draft_run_id || "",
+          trace_id: resolution.trace_id || "",
+          citations_used: JSON.stringify(citations),
+          citations_kept: JSON.stringify(citations),
+          feedback_reason: reason,
+          reason_code: reason || (rating === "thumbs_up" ? "good_answer" : ""),
+          abstention_correct: resolution.draft_unavailable_reason ? "unsure" : "not_applicable",
+          comment: feedbackComment,
+          agent_action: agentAction,
+          final_sent_text: agentAction === "rejected" ? "" : email,
+        }),
+      });
+    } catch {}
+  }
+
+  React.useEffect(() => {
+    function onKey(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") submitTicket();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [ticket, apiKey, product, permissionLevel, accessChannel, processing, resolution, lastFingerprint]);
+
+  return h(React.Fragment, null,
+    h("header", null,
+      h("div", null,
+        h("div", { className: "logo-text" }, "ResolveKit"),
+        h("div", { className: "logo-sub" }, "Configurable support resolution workspace")
+      ),
+      h("div", { className: "header-right" },
+        h("a", { className: "nav-link", href: "/configurator" }, "Config"),
+        h("a", { className: "nav-link", href: "/admin" }, "Admin"),
+        h("a", { className: "nav-link", href: "/docs" }, "API Docs"),
+        roleInfo.role ? h("div", { className: "status-pill ready", title: `${roleInfo.permissions.length} permissions` },
+          h("div", { className: "status-dot" }),
+          h("span", null, roleInfo.role.toUpperCase())
+        ) : null,
+        roleInfo.config_hash ? h("div", { className: "nav-link", title: "Current config hash" }, roleInfo.config_hash) : null,
+        h("button", { className: "theme-btn", onClick: () => setTheme(theme === "dark" ? "light" : "dark"), title: "Toggle theme" }, theme === "dark" ? "☀" : "☾"),
+        h("div", { className: `status-pill ${processing ? "processing" : "ready"}` },
+          h("div", { className: "status-dot" }),
+          h("span", null, processing ? "PROCESSING" : "READY")
+        )
+      )
+    ),
+    h("main", null,
+      h(InputPanel, {
+        apiKey, setApiKey, showKey, setShowKey, products, product, setProduct,
+        roles, permissionLevel, setPermissionLevel, platforms, accessChannel, setAccessChannel,
+        ticket, updateTicket, error, clearAll, submitTicket, processing,
+      }),
+      h(OutputPanel, {
+        processing, pipelineStep, resolution, fallbackPrefs: outputPrefs, email, setEmail,
+        originalEmail, responseTimeMs, products, product, accessChannel, rate, feedback,
+        feedbackReason, setFeedbackReason, feedbackComment, setFeedbackComment,
+        agentAction, setAgentAction,
+      }),
+      h(InsightPanel, { resolution, processing, pipelineStep })
+    ),
+    h("footer", null,
+      h("span", null, "ResolveKit"),
+      h("span", null, clock.toLocaleTimeString())
+    )
+  );
+}
+
+function InputPanel(props) {
+  return h("div", { className: "panel" },
+    h("div", { className: "panel-header" },
+      h("div", null, h("div", { className: "panel-label" }, "Input"), h("div", { className: "panel-title" }, "Support Ticket"))
+    ),
+    h("div", { className: "panel-body" },
+      h("div", { className: "onboarding-note" },
+        h("strong", null, "First run"),
+        h("span", null, "Demo ticket is prefilled. Local app token goes below; hosted LLM provider key stays only in `.env`.")
+      ),
+      h("div", { className: "field" },
+        h("label", null, "Demo Case"),
+        h("select", { value: "", onChange: e => e.target.value && props.updateTicket(e.target.value) },
+          ...DEMO_CASES.map(([value, label]) => h("option", { key: label, value }, label))
+        )
+      ),
+      h("div", { className: "field" },
+        h("label", null, "API Key"),
+        h("div", { className: "api-row" },
+          h("input", {
+            type: props.showKey ? "text" : "password",
+            value: props.apiKey,
+            onChange: e => props.setApiKey(e.target.value),
+            placeholder: "Enter your x-api-key",
+            autoComplete: "off",
+          }),
+          h("button", { className: "btn-eye", onClick: () => props.setShowKey(!props.showKey), title: "Show or hide API key" }, props.showKey ? "hide" : "show")
+        )
+      ),
+      h("div", { className: "field" },
+        h("label", null, "Product"),
+        h("select", { value: props.product, onChange: e => props.setProduct(e.target.value) },
+          h("option", { value: "" }, "Select product"),
+          ...Object.entries(props.products).map(([slug, product]) =>
+            h("option", { key: slug, value: product.slug || slug }, product.display_name || slug)
+          )
+        )
+      ),
+      h("div", { className: "field" },
+        h("label", null, "Permission Level"),
+        h("select", { value: props.permissionLevel, disabled: !props.roles.length, onChange: e => props.setPermissionLevel(e.target.value) },
+          h("option", { value: "" }, "Select permission level"),
+          ...props.roles.map(role => h("option", { key: role.name, value: role.name }, labelize(role.name)))
+        )
+      ),
+      h("div", { className: "field" },
+        h("label", null, "Website / Mobile App"),
+        h("select", { value: props.accessChannel, onChange: e => props.setAccessChannel(e.target.value) },
+          h("option", { value: "" }, "Select access channel"),
+          ...props.platforms.map(([key, platform]) =>
+            h("option", { key, value: key }, labelize(platform.normalized || key))
+          )
+        )
+      ),
+      h("div", { className: "field" },
+        h("div", { className: "field-top" },
+          h("label", null, "Ticket Text"),
+          h("span", { className: `char-count ${props.ticket.length > 3000 ? "warn" : ""}` }, `${props.ticket.length.toLocaleString()} chars`)
+        ),
+        h("textarea", { value: props.ticket, onChange: e => props.updateTicket(e.target.value), placeholder: "Paste or type the support ticket here..." })
+      ),
+      props.error ? h("div", { className: "error-box", style: { display: "block" } }, props.error) : null,
+      h("button", { className: "btn-submit", disabled: props.processing, onClick: props.submitTicket },
+        h("div", { className: "spinner", style: { display: props.processing ? "block" : "none" } }),
+        h("span", null, props.processing ? "Analyzing..." : "Analyze Ticket"),
+        h("span", { className: "btn-hint", style: { opacity: props.processing ? 0 : "" } }, "Ctrl+Enter")
+      ),
+      h("button", { className: "btn-clear", onClick: props.clearAll }, "Clear")
+    )
+  );
+}
+
+function OutputPanel({ processing, pipelineStep, resolution, fallbackPrefs, email, setEmail, originalEmail, responseTimeMs, products, product, accessChannel, rate, feedback, feedbackReason, setFeedbackReason, feedbackComment, setFeedbackComment, agentAction, setAgentAction }) {
+  const confidence = String(resolution?.confidence || "").toUpperCase();
+  const requestContext = resolution?.request_context || {};
+  const usage = resolution?.usage_summary || {};
+  const signals = resolution?.retrieval_signals || {};
+  return h("div", { className: "panel" },
+    h("div", { className: "panel-header" },
+      h("div", null, h("div", { className: "panel-label" }, "Output"), h("div", { className: "panel-title" }, "Resolution")),
+      h("div", { className: "confidence-wrap" },
+        h("span", { className: "confidence-label" }, "Confidence"),
+        confidence ? h("span", { className: `badge ${confidenceClass(confidence)}` }, confidence) : null
+      )
+    ),
+    h("div", { className: "panel-body" },
+      processing ? h(PipelineState, { step: pipelineStep }) :
+      resolution ? h(ResolutionView, { resolution, fallbackPrefs, email, setEmail, originalEmail, rate, feedback, feedbackReason, setFeedbackReason, feedbackComment, setFeedbackComment, agentAction, setAgentAction }) :
+      h("div", { className: "results-empty" },
+        h("div", { className: "empty-icon" }, "↵"),
+        h("div", null, "Paste a ticket and click Analyze"),
+        h("div", { className: "empty-hint" }, "Ctrl+Enter to submit")
+      )
+    ),
+    resolution ? h("div", { className: "meta-bar", style: { display: "flex" } },
+      h("div", { className: "meta-dot" }),
+      h("span", null, responseTimeMs ? `${(responseTimeMs / 1000).toFixed(2)}s` : "-"),
+      h("span", null, "·"),
+      h("span", null, "Provider: ", h("span", null, resolution.provider || "unknown")),
+      h("span", null, "·"),
+      h("span", null, "Tokens: ", h("span", null, (usage.total_tokens || 0).toLocaleString())),
+      h("span", null, "·"),
+      h("span", null, "Product: ", h("span", null, productDisplayName(products, requestContext.product || product || ""))),
+      h("span", null, "·"),
+      h("span", null, "Channel: ", h("span", null, labelize(requestContext.access_channel || accessChannel || ""))),
+      h("span", null, "·"),
+      h("span", null, "Response cache: ", h("span", null, resolution.from_cache || signals.used_response_cache ? "hit" : "miss")),
+      h("span", null, "·"),
+      h("span", null, "Retrieval cache: ", h("span", null, signals.used_retrieval_cache ? "hit" : "miss"))
+    ) : null
+  );
+}
+
+function PipelineState({ step }) {
+  return h("div", { className: "processing-state" },
+    h("div", { className: "processing-label" }, "Running pipeline"),
+    h("div", { className: "pipeline-steps" },
+      ...PIPELINE.map((name, index) => h("div", {
+        key: name,
+        className: `pipe-step ${index < step ? "done" : index === step ? "active" : ""}`,
+      }, h("div", { className: "pipe-dot" }), h("span", null, name)))
+    )
+  );
+}
+
+function InsightPanel({ resolution, processing, pipelineStep }) {
+  const [tab, setTab] = React.useState("pipeline");
+  const validation = resolution?.validation || {};
+  const signals = resolution?.retrieval_signals || {};
+  const evidence = validation.citations || signals.source_selection || [];
+  const trace = {
+    trace_id: resolution?.trace_id || "",
+    conversation_id: resolution?.conversation_id || "",
+    draft_id: resolution?.draft_run_id || resolution?.response_id || "",
+    config_hash: resolution?.config_hash || signals.config_hash || "",
+    validation_outcome: validation.outcome || "",
+    warning_count: (validation.warnings || []).length,
+  };
+  const stageStatus = name => processing ? "running/pending" : resolution ? "complete" : "pending";
+  return h("div", { className: "panel" },
+    h("div", { className: "panel-header" },
+      h("div", null, h("div", { className: "panel-label" }, "Insight"), h("div", { className: "panel-title" }, "Pipeline / Evidence / Trace"))
+    ),
+    h("div", { className: "feedback-row", style: { borderTop: 0, padding: "12px 16px" } },
+      ...["pipeline", "evidence", "trace"].map(name =>
+        h("button", { className: `thumb-btn ${tab === name ? "selected-up" : ""}`, onClick: () => setTab(name) }, labelize(name))
+      )
+    ),
+    h("div", { className: "panel-body" },
+      tab === "pipeline" ? h("div", { className: "resolution" },
+        ...PIPELINE.map((name, index) => h("div", { key: name, className: "res-block expanded" },
+          h("div", { className: "res-block-header" }, h("span", null, name), h("span", null, processing && index === pipelineStep ? "running" : stageStatus(name))),
+          h("div", { className: "res-block-body mono" }, displayValue({ stage_status: processing && index === pipelineStep ? "running" : stageStatus(name), latency_ms: "trace", warning_count: index === PIPELINE.length - 1 ? trace.warning_count : 0 }))
+        ))
+      ) : tab === "evidence" ? h("div", { className: "resolution" },
+        evidence.length ? evidence.map((item, index) => h("div", { key: index, className: "res-block expanded" },
+          h("div", { className: "res-block-header" }, h("span", null, item.source_title || item.source_id || `Evidence ${index + 1}`)),
+          h("div", { className: "res-block-body mono" }, displayValue({
+            source_id: item.source_id,
+            source_type: item.source_type,
+            approval_state: item.is_approved === false ? "not approved" : "approved/customer-facing",
+            chunk_id: item.chunk_id || item.evidence_id || item.citation_id,
+            cited_claim: item.claim || item.text || "",
+          }))
+        )) : h("div", { className: "results-empty" }, "No evidence yet")
+      ) : h("div", { className: "res-block expanded" },
+        h("div", { className: "res-block-header" }, h("span", null, "Trace Summary")),
+        h("div", { className: "res-block-body mono" }, displayValue(trace))
+      )
+    )
+  );
+}
+
+function ResolutionView({ resolution, fallbackPrefs, email, setEmail, originalEmail, rate, feedback, feedbackReason, setFeedbackReason, feedbackComment, setFeedbackComment, agentAction, setAgentAction }) {
+  const [open, setOpen] = React.useState({ issue_classification: true });
+  const retrievalSignals = resolution.retrieval_signals || {};
+  const retrievalDiagnostics = {
+    top_score: retrievalSignals.top_score,
+    score_gap: retrievalSignals.score_gap,
+    selected_sources: retrievalSignals.source_selection || [],
+    support_context_bundles: retrievalSignals.support_context_bundles || [],
+    used_retrieval_cache: retrievalSignals.used_retrieval_cache || false,
+  };
+  const blocks = [
+    ["issue_classification", "Issue", resolution.issue_classification || resolution.title],
+    ["diagnosis", "Diagnosis", resolution.diagnosis],
+    ["root_cause", "Root Cause", resolution.root_cause],
+    ["resolution_steps", "Resolution Steps", resolution.resolution_steps],
+    ["sources", "Sources", resolution.sources, true],
+    ["retrieval_diagnostics", "Retrieval Diagnostics", retrievalDiagnostics, true],
+    ["validation_flags", "Validation", resolution.validation || resolution.eval_score, true],
+  ].filter(([key, , value]) => (key === "retrieval_diagnostics" || outputSectionEnabled(resolution, fallbackPrefs, key)) && value);
+
+  return h(React.Fragment, null,
+    h("div", { className: resolution.from_cache ? "cache-tag cache-hit" : "cache-tag cache-live" }, resolution.from_cache ? "Served from cache" : "Live response"),
+    h("div", { className: "resolution" },
+      ...blocks.map(([key, label, value, mono], index) => {
+        const expanded = !!open[key];
+        return h("div", { key, className: `res-block ${expanded ? "expanded" : "collapsed"}`, style: { animationDelay: `${index * 0.06}s` } },
+          h("div", { className: "res-block-header", onClick: () => setOpen(prev => ({ ...prev, [key]: !prev[key] })) },
+            h("span", null, label),
+            h("span", { className: "res-toggle" })
+          ),
+          h("div", { className: `res-block-body ${mono ? "mono" : ""}` }, displayValue(value))
+        );
+      }),
+      outputSectionEnabled(resolution, fallbackPrefs, "draft_email") ? h("div", { className: "res-block expanded", id: "emailBlock" },
+        h("div", { className: "res-block-header" },
+          h("span", null, "Draft Email ", h("span", { style: { fontWeight: 400, opacity: 0.6 } }, "(editable)")),
+          h("div", { style: { display: "flex", alignItems: "center", gap: "8px" } },
+            email !== originalEmail ? h("span", { className: "edit-badge" }, "edited") : null,
+            h("button", { className: "copy-btn", onClick: () => navigator.clipboard?.writeText(email || "") }, "copy")
+          )
+        ),
+        !email ? h("div", { className: "draft-note" }, resolution.draft_unavailable_reason || "Draft unavailable because the assistant did not have enough approved source-backed information.") : null,
+        h("textarea", { className: "email-textarea", value: email, onChange: e => setEmail(e.target.value) })
+      ) : null
+    ),
+    h("div", { className: "feedback-row" },
+      h("span", { className: "feedback-label" }, "Helpful?"),
+      h("div", { className: "feedback-controls" },
+        h("select", { value: agentAction, disabled: !!feedback, onChange: e => setAgentAction(e.target.value), title: "Agent action" },
+          h("option", { value: "pending" }, "Action"),
+          h("option", { value: "sent_as_is" }, "Sent as-is"),
+          h("option", { value: "edited" }, "Edited"),
+          h("option", { value: "rejected" }, "Rejected")
+        ),
+        h("select", { value: feedbackReason, disabled: !!feedback, onChange: e => setFeedbackReason(e.target.value), title: "Feedback reason" },
+          h("option", { value: "wrong_answer" }, "Wrong answer"),
+          h("option", { value: "wrong_source" }, "Wrong source"),
+          h("option", { value: "stale_source" }, "Stale source"),
+          h("option", { value: "missing_source" }, "Missing source"),
+          h("option", { value: "missing_context" }, "Missing context"),
+          h("option", { value: "unsupported_claim" }, "Unsupported claim"),
+          h("option", { value: "unsafe_output" }, "Unsafe output"),
+          h("option", { value: "too_verbose" }, "Too long"),
+          h("option", { value: "too_cautious" }, "Too cautious"),
+          h("option", { value: "bad_tone" }, "Bad tone"),
+          h("option", { value: "other" }, "Other")
+        ),
+        h("input", { value: feedbackComment, disabled: !!feedback, onChange: e => setFeedbackComment(e.target.value), placeholder: "Optional note" })
+      ),
+      h("div", { className: "thumb-group" },
+        h("button", { className: `thumb-btn ${feedback === "thumbs_up" ? "selected-up" : ""}`, disabled: !!feedback, onClick: () => rate("thumbs_up") }, "Yes"),
+        h("button", { className: `thumb-btn ${feedback === "thumbs_down" ? "selected-down" : ""}`, disabled: !!feedback, onClick: () => rate("thumbs_down") }, "No")
+      ),
+      feedback ? h("span", { className: "feedback-ack", style: { display: "inline" } }, "Thanks") : null
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(ErrorBoundary, null, h(App)));
+</script>
+</body>
+</html>

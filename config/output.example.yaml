@@ -1,0 +1,23 @@
+{
+  "output": {
+    "mode": "resolution_full",
+    "audience": "internal_assist",
+    "include": {
+      "issue_classification": true,
+      "diagnosis": true,
+      "resolution_steps": true,
+      "sources": true,
+      "confidence": true,
+      "draft_email": true,
+      "validation_flags": true
+    },
+    "email": {
+      "greeting": "Hi,",
+      "signoff": "Kind regards,",
+      "tone": "professional_warm"
+    },
+    "diagnosis": {
+      "max_lines": 3
+    }
+  }
+}

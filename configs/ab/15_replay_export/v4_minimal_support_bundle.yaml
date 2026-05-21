@@ -1,0 +1,27 @@
+variant_id: 15_replay_export_v4_minimal_support_bundle
+stage: replay_export
+stage_number: 15
+name: Minimal support bundle
+experiment_mode: offline_replay_only
+changed_lever: trace + config hash + metrics
+expected_effect: Smaller exports are safer
+primary_metric: replay_reproducibility
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  redaction_pass: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  bundle_profile: minimal
+config_hash: af72fe291f767d50

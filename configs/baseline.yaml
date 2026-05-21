@@ -1,0 +1,8 @@
+name: resolvekit_alpha_baseline
+retrieval_arm: current_hybrid_rag
+query_decomposition_enabled: false
+source_formats:
+  - csv
+  - xlsx
+  - pdf
+notes: Local alpha baseline. Does not mutate runtime config.

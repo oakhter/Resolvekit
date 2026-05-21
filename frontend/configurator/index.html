@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResolveKit Configurator</title>
+<style>
+* { box-sizing: border-box; }
+:root {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --line-strong: #2563eb;
+  --soft: #f1f5f9;
+  --sidebar: #111827;
+  --sidebar-line: #334155;
+  --sidebar-muted: #cbd5e1;
+  --sidebar-hover: #1e293b;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --danger: #b91c1c;
+  --ok: #0f766e;
+  --field: #ffffff;
+  --code-bg: #0f172a;
+  --code-fg: #e2e8f0;
+  --radius: 8px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1120;
+    --panel: #111827;
+    --ink: #f8fafc;
+    --muted: #94a3b8;
+    --line: #263244;
+    --line-strong: #60a5fa;
+    --soft: #182032;
+    --sidebar: #020617;
+    --sidebar-line: #1e293b;
+    --sidebar-muted: #94a3b8;
+    --sidebar-hover: #0f172a;
+    --accent: #3b82f6;
+    --accent-contrast: #ffffff;
+    --danger: #f87171;
+    --ok: #2dd4bf;
+    --field: #0f172a;
+    --code-bg: #020617;
+    --code-fg: #e2e8f0;
+  }
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+.shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+.sidebar {
+  background: var(--sidebar);
+  color: #fff;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.brand { border-bottom: 1px solid var(--sidebar-line); padding-bottom: 22px; }
+.brand h1 { font-size: 22px; line-height: 1.05; margin: 0 0 10px; letter-spacing: -0.02em; }
+.brand p { margin: 0; color: var(--sidebar-muted); font-size: 13px; line-height: 1.5; }
+.nav { display: grid; gap: 8px; }
+.nav button {
+  border: 1px solid var(--sidebar-line);
+  background: transparent;
+  color: var(--sidebar-muted);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  text-align: left;
+}
+.nav button.active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.nav a {
+  border: 1px solid var(--sidebar-line);
+  background: transparent;
+  color: var(--sidebar-muted);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  text-align: left;
+  text-decoration: none;
+  font-size: 13px;
+}
+.nav a:hover { background: var(--sidebar-hover); color: #fff; }
+.status {
+  margin-top: auto;
+  border: 1px solid var(--sidebar-line);
+  border-radius: var(--radius);
+  padding: 14px;
+  color: var(--sidebar-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.main { padding: 30px; overflow: auto; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.topbar h2 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.035em; }
+.topbar p { margin: 0; color: var(--muted); max-width: 760px; line-height: 1.5; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  border: 1px solid var(--line-strong);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: var(--radius);
+  min-height: 40px;
+  padding: 0 14px;
+  font-weight: 700;
+}
+.btn.secondary { background: transparent; color: var(--ink); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+.tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 12px 4px;
+  margin-right: 18px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.tabs button.active { color: var(--ink); border-color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.panel {
+  grid-column: span 6;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.panel.full { grid-column: 1 / -1; }
+.panel h3 { margin: 0 0 14px; font-size: 15px; letter-spacing: .01em; }
+.field { display: grid; gap: 7px; margin-bottom: 12px; }
+label { color: var(--muted); font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+input, textarea, select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  padding: 10px 11px;
+  min-height: 40px;
+}
+textarea { min-height: 92px; resize: vertical; line-height: 1.45; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.toggle-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.toggle-row input { width: 18px; min-height: 18px; margin-top: 2px; }
+.toggle-row strong { display: block; font-size: 14px; }
+.toggle-row span { color: var(--muted); font-size: 12px; }
+.source-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--soft);
+}
+.source-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.source-head strong { text-transform: capitalize; }
+.source-head input { width: 18px; min-height: 18px; }
+.kv { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.notice {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--soft);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.notice.error { border-left-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--panel)); }
+.notice.ok { border-left-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--panel)); }
+.hidden { display: none !important; }
+.readonly {
+  opacity: .72;
+  pointer-events: none;
+}
+.summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.json-panel {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.json-panel summary {
+  cursor: pointer;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.rule-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.rule-card h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field);
+  min-height: 32px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+.chip button {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-weight: 900;
+  padding: 0;
+}
+.impact {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--muted);
+  min-height: 24px;
+  padding: 0 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.contract-list, .preview-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.preview-box pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.mini-input {
+  width: 180px;
+  min-height: 32px;
+  padding: 6px 9px;
+}
+.authority-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 1fr 72px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.output {
+  white-space: pre-wrap;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border-radius: var(--radius);
+  padding: 16px;
+  min-height: 220px;
+  line-height: 1.55;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.sandbox-log {
+  margin-top: 12px;
+  min-height: 180px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 12px;
+  white-space: pre-wrap;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.sandbox-log strong {
+  display: block;
+  color: var(--code-fg);
+  margin-bottom: 8px;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.wizard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.wizard-step {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+  padding: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wizard-step.done { border-color: var(--ok); color: var(--ok); }
+.dirty-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--field);
+}
+.diagnostics-toolbar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.diagnostics-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.diagnostic-card {
+  grid-column: span 4;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.diagnostic-card h3 { margin: 0; font-size: 14px; }
+.diagnostic-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.diagnostic-card pre, .log-window, .chunk-text, .metadata-box {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border-radius: 6px;
+  padding: 10px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.diagnostic-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-ok { color: #15803d; background: rgba(21,128,61,.10); border-color: rgba(21,128,61,.25); }
+.status-warn { color: #b45309; background: rgba(180,83,9,.10); border-color: rgba(180,83,9,.25); }
+.status-fail { color: #b91c1c; background: rgba(185,28,28,.10); border-color: rgba(185,28,28,.25); }
+.status-unknown, .status-info { color: var(--muted); background: var(--soft); }
+.env-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.env-table th, .env-table td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.env-table th { color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.logs-controls { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.log-window { max-height: 340px; white-space: pre-wrap; }
+.chat-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.chat-card h4 { margin: 0 0 8px; font-size: 14px; }
+.chat-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.chunk-list { display: grid; gap: 10px; margin-top: 10px; }
+.chunk-item { border: 1px solid var(--line); border-radius: 6px; background: var(--field); padding: 10px; }
+.copy-small { border: 1px solid var(--line); background: var(--field); color: var(--ink); border-radius: 6px; padding: 6px 9px; font-size: 11px; }
+@media (max-width: 980px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; }
+  .panel, .diagnostic-card { grid-column: 1 / -1; }
+  .row, .kv, .logs-controls { grid-template-columns: 1fr; }
+  .topbar { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>ResolveKit</h1>
+      <p>Local configurator for one product, explicit sources, previews, bounded LLM usage, and grounded support drafts.</p>
+    </div>
+    <nav class="nav">
+      <a href="/">Back to Workspace</a>
+      <button class="active" data-view="config">Configurator</button>
+      <button data-view="diagnostics">Diagnostics</button>
+      <button data-view="sandbox">Ticket Sandbox</button>
+    </nav>
+    <div class="status" id="statusBox">Loading local configuration...</div>
+  </aside>
+
+  <main class="main">
+    <section id="configView">
+      <div class="topbar">
+        <div>
+          <h2>Configurator</h2>
+          <p>Basic settings stay focused on the product, sources, and output shape. Advanced settings expose deterministic retrieval controls without letting runtime LLM calls rewrite configuration.</p>
+        </div>
+        <div class="actions">
+          <span class="dirty-pill" id="dirtyPill">No pending changes</span>
+          <button class="btn secondary" id="validateBtn">Validate</button>
+          <button class="btn" id="saveBtn">Save Config</button>
+        </div>
+      </div>
+
+      <section class="panel full" id="setupWizard">
+        <h3>First-Run Setup Wizard</h3>
+        <div class="notice" id="wizardStatus">Checking setup state...</div>
+        <div class="row">
+          <div class="field">
+            <label>Source mode <span class="impact">Requires knowledge reload</span></label>
+            <select id="wizardSourceMode">
+              <option value="demo">Demo source</option>
+              <option value="custom">Custom source</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sample tickets <span class="impact">Applies on next resolve</span></label>
+            <button class="btn secondary" id="wizardRunSamples" type="button">Run Three Samples</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="wizardPreviewFirst" type="button">Preview First Source</button>
+          <button class="btn secondary" id="wizardSave" type="button">Save Wizard Config</button>
+          <button class="btn secondary" id="wizardDone" type="button">Mark Complete</button>
+        </div>
+        <div class="wizard-grid" id="wizardSteps"></div>
+      </section>
+
+      <div class="tabs">
+        <button class="active" data-tab="basic">Basic Settings</button>
+        <button data-tab="advanced">Advanced Settings</button>
+      </div>
+
+      <div id="validationBox" class="notice hidden"></div>
+
+      <div id="basicTab" class="grid">
+        <section class="panel">
+          <h3>Product</h3>
+          <div class="row">
+            <div class="field">
+              <label>Display name <span class="impact">Applies on next resolve</span></label>
+              <input id="productName" placeholder="Example Product">
+            </div>
+            <div class="field">
+              <label>Product slug <span class="impact">Applies on next resolve</span></label>
+              <input id="productSlug" placeholder="example_product">
+            </div>
+          </div>
+          <div class="field">
+            <label>Aliases, comma separated <span class="impact">Applies on next resolve</span></label>
+            <input id="productAliases" placeholder="demo, example, example app">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Platforms <span class="impact">Applies on next resolve</span></label>
+              <input id="platforms" placeholder="website=website:web,browser; mobile_app=app:mobile,ios,android">
+            </div>
+            <div class="field">
+              <label>Roles / permissions <span class="impact">Applies on next resolve</span></label>
+              <input id="roles" placeholder="admin, manager, scheduler, employee">
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Output Preferences</h3>
+          <div class="row">
+            <div class="field">
+              <label>Output mode <span class="impact">Applies on next resolve</span></label>
+              <select id="outputMode">
+                <option value="resolution_full">Support resolution response</option>
+                <option value="email_draft_only">Draft email only</option>
+                <option value="internal_agent_assist">Internal guidance only</option>
+                <option value="diagnosis_only">Diagnosis only</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Audience <span class="impact">Applies on next resolve</span></label>
+              <select id="audience">
+                <option value="internal_assist">Internal assist</option>
+                <option value="customer_facing_draft">Customer-facing draft</option>
+              </select>
+            </div>
+          </div>
+          <div class="summary" id="outputModeSummary"></div>
+          <div id="customOutputSections" class="hidden">
+            <div class="toggle-row"><input type="checkbox" id="includeIssue"><div><strong>Issue classification <span class="impact">Applies on next resolve</span></strong><span>One-line route or issue label.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeDiagnosis"><div><strong>Diagnosis <span class="impact">Applies on next resolve</span></strong><span>Short default diagnosis for agent context.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeSteps"><div><strong>Resolution steps <span class="impact">Applies on next resolve</span></strong><span>Actionable troubleshooting or policy guidance.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeSources"><div><strong>Sources <span class="impact">Applies on next resolve</span></strong><span>Show grounding and evidence references.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeConfidence"><div><strong>Confidence <span class="impact">Applies on next resolve</span></strong><span>Computed confidence level.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeEmail"><div><strong>Draft email <span class="impact">Applies on next resolve</span></strong><span>Customer-ready response remains the default artifact.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="includeValidation"><div><strong>Validation flags <span class="impact">Applies on next resolve</span></strong><span>Escalation and review signals.</span></div></div>
+          </div>
+        </section>
+
+        <section class="panel full">
+          <h3>Sources and Column Mapping</h3>
+          <div id="sourcesList"></div>
+        </section>
+      </div>
+
+      <div id="advancedTab" class="grid hidden">
+        <section class="panel full">
+          <h3>Chunk Type Rules</h3>
+          <div class="notice">Editable keyword lists. Highest priority match wins; table detection and release-note defaults remain deterministic. <span class="impact">Requires knowledge reload</span></div>
+          <div id="chunkRulesSimple"></div>
+          <details class="json-panel">
+            <summary>Advanced JSON</summary>
+            <textarea id="chunkRules"></textarea>
+          </details>
+        </section>
+        <section class="panel full">
+          <h3>Route Policies</h3>
+          <div class="notice">Route boosts and preferred source/chunk hints apply on the next /resolve. <span class="impact">Applies on next resolve</span></div>
+          <div id="routePoliciesSimple"></div>
+          <details class="json-panel">
+            <summary>Advanced JSON</summary>
+            <textarea id="routePolicies"></textarea>
+          </details>
+        </section>
+        <section class="panel full">
+          <h3>Source Authority</h3>
+          <div class="notice">Higher authority sources are trusted more during retrieval, reranking, and confidence checks. Values must be between 0.0 and 1.0. <span class="impact">Applies on next resolve</span></div>
+          <div id="sourceAuthoritySimple"></div>
+          <details class="json-panel">
+            <summary>Advanced JSON</summary>
+            <textarea id="sourceAuthority"></textarea>
+          </details>
+        </section>
+        <section class="panel full">
+          <h3>Workflow and Privacy</h3>
+          <div class="row">
+            <div class="field">
+              <label>Workflow mode <span class="impact">Applies on next resolve</span></label>
+              <select id="workflowMode">
+                <option value="fast">Fast</option>
+                <option value="standard">Standard</option>
+                <option value="strict">Strict</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Max LLM calls <span class="impact">Applies on next resolve</span></label>
+              <input id="maxLlmCalls" type="number" min="0" max="5">
+            </div>
+          </div>
+          <div class="summary" id="workflowSummary"></div>
+          <div id="customWorkflowControls" class="hidden">
+            <div class="toggle-row readonly"><input type="checkbox" id="stageResponder" checked disabled><div><strong>Responder stage</strong><span>Required for generated support responses.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="stageEvaluator"><div><strong>Evaluator stage</strong><span>Counts toward the configured LLM budget.</span></div></div>
+            <div class="toggle-row"><input type="checkbox" id="stageRetry"><div><strong>Responder retry</strong><span>Retries once when evaluator faithfulness is LOW.</span></div></div>
+          </div>
+          <div class="toggle-row"><input type="checkbox" id="parentExpansion"><div><strong>Parent section expansion <span class="impact">Requires knowledge reload</span></strong><span>Retrieve precise child chunks, answer with parent context.</span></div></div>
+          <div class="toggle-row"><input type="checkbox" id="piiRedaction"><div><strong>PII redaction safety <span class="impact">Requires knowledge reload</span></strong><span>Fails safely for sensitive future sources when provider is unavailable.</span></div></div>
+          <div class="notice">Database URLs, provider/model names, warmup settings, and server/auth environment variables require an app restart. <span class="impact">Requires app restart</span></div>
+          <div class="actions">
+            <button class="btn secondary" id="reloadNoticeBtn" type="button">Knowledge Reload</button>
+            <button class="btn secondary" id="restartNoticeBtn" type="button">App Restart</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="sandboxView" class="hidden">
+      <div class="topbar">
+        <div>
+          <h2>Ticket Sandbox</h2>
+          <p>Paste a ticket and test the current configuration against the normal /resolve flow.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <section class="panel">
+          <h3>Request</h3>
+          <div class="field"><label>API key</label><input id="apiKey" type="password" placeholder="x-api-key"></div>
+          <div class="row">
+            <div class="field"><label>Product</label><select id="ticketProduct"></select></div>
+            <div class="field"><label>Access channel</label><select id="accessChannel"></select></div>
+          </div>
+          <div class="field"><label>Permission level</label><select id="permissionLevel"></select></div>
+          <div class="row">
+            <div class="field">
+              <label>Support mode</label>
+              <select id="supportOpsMode">
+                <option value="query">Query mode - approved sources only</option>
+                <option value="chat">Chat mode - internal notes only</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Similarity threshold</label>
+              <select id="similarityThreshold">
+                <option value="none">No restriction</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>Pinned source IDs</label><input id="pinnedSourceIds" placeholder="policy:billing_contact, knowledge_base:mobile_push"></div>
+          <div class="field"><label>Ticket</label><textarea id="ticketText" placeholder="Customer cannot access invoice download..."></textarea></div>
+          <button class="btn" id="resolveBtn">Resolve Ticket</button>
+        </section>
+        <section class="panel">
+          <h3>Resolution</h3>
+          <div class="output" id="resolutionOutput">No ticket run yet.</div>
+          <div class="sandbox-log" id="sandboxLog"><strong>Sandbox Logs</strong>No run yet.</div>
+        </section>
+      </div>
+    </section>
+
+    <section id="diagnosticsView" class="hidden">
+      <div class="topbar">
+        <div>
+          <h2>Diagnostics</h2>
+          <p>Live configuration snapshot, system checks, recent logs, and per-question diagnostic sessions.</p>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="refreshDiagnosticsBtn" type="button">Refresh</button>
+          <button class="btn" id="testAllDiagnosticsBtn" type="button">Test All</button>
+        </div>
+      </div>
+
+      <div class="diagnostics-toolbar">
+        <span class="dirty-pill" id="diagnosticsUpdated">No diagnostics loaded</span>
+        <span class="dirty-pill" id="diagnosticsSummary">0 checks</span>
+      </div>
+
+      <div class="grid">
+        <section class="panel full">
+          <h3>Live Config Snapshot</h3>
+          <div class="notice">Unsaved configurator changes appear here immediately and are captured on each Ticket Sandbox run.</div>
+          <pre id="configSnapshot">No configuration loaded.</pre>
+        </section>
+
+        <section class="panel full">
+          <h3>Environment / Config Variables</h3>
+          <div id="envDiagnostics">No environment diagnostics loaded.</div>
+        </section>
+
+        <section class="panel full">
+          <h3>System Checks</h3>
+          <div class="diagnostics-grid" id="diagnosticCards"></div>
+        </section>
+
+        <section class="panel full">
+          <h3>Recent Logs</h3>
+          <div class="logs-controls">
+            <select id="levelFilter">
+              <option value="">All levels</option>
+              <option value="debug">Debug</option>
+              <option value="info">Info</option>
+              <option value="warn">Warn</option>
+              <option value="error">Error</option>
+              <option value="success">Success</option>
+            </select>
+            <input id="chatFilter" placeholder="Filter by chat ID">
+            <input id="logSearch" placeholder="Search logs">
+            <div class="actions">
+              <button class="btn secondary" id="pauseLogsBtn" type="button">Pause</button>
+              <button class="btn secondary" id="copyLogsBtn" type="button">Copy Logs</button>
+              <button class="btn secondary" id="clearLogsBtn" type="button">Clear Visible</button>
+            </div>
+          </div>
+          <div class="log-window" id="diagnosticLogs">No logs yet.</div>
+        </section>
+
+        <section class="panel full">
+          <h3>Chat Diagnostics</h3>
+          <div id="chatDiagnostics">No chat diagnostic sessions yet. Run a ticket in Ticket Sandbox.</div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const state = {
+  config: null,
+  chunkRules: {},
+  routePolicies: {},
+  sourceAuthority: {},
+  sourceRegistry: {},
+  impactLabels: {},
+  fieldMetadata: {},
+  sourcePreviews: {},
+  dirty: false,
+  pendingChanges: new Set(),
+  setupWizard: null,
+  configuratorApiKey: localStorage.getItem("resolvekit_configurator_api_key") || "",
+  diagnosticResults: [],
+  diagnosticEnv: [],
+  diagnosticLogs: [],
+  chatSessions: [],
+  logsPaused: false,
+  runningChecks: new Set()
+};
+const RAW_SOURCE_TYPES = new Set(["raw_ticket_history", "raw_chat_transcript", "raw_call_transcript", "unreviewed_case_learning", "similar_resolved_ticket"]);
+const $ = (id) => document.getElementById(id);
+const list = (value) => String(value || "").split(",").map(v => v.trim()).filter(Boolean);
+const pretty = (obj) => JSON.stringify(obj || {}, null, 2);
+const parseBox = (id, fallback = {}) => {
+  try { return JSON.parse($(id).value || "{}"); }
+  catch (e) { throw new Error(`${id} must contain valid JSON`); }
+};
+
+function setStatus(message) { $("statusBox").textContent = message; }
+function markDirty(reason = "config") {
+  if (!state.config) return;
+  state.dirty = true;
+  state.pendingChanges.add(reason);
+  updateDirtyState();
+}
+
+function clearDirty() {
+  state.dirty = false;
+  state.pendingChanges.clear();
+  updateDirtyState();
+}
+
+function updateDirtyState() {
+  const pill = $("dirtyPill");
+  if (!pill) return;
+  pill.textContent = state.dirty
+    ? `${state.pendingChanges.size || 1} pending change${state.pendingChanges.size === 1 ? "" : "s"}`
+    : "No pending changes";
+}
+function showValidation(validation) {
+  const box = $("validationBox");
+  const errors = validation?.errors || [];
+  const warnings = validation?.warnings || [];
+  box.className = "notice " + (errors.length ? "error" : "ok");
+  box.textContent = errors.length || warnings.length
+    ? [...errors, ...warnings.map(w => `Warning: ${w}`)].join("\n")
+    : "Configuration is valid.";
+  box.classList.remove("hidden");
+}
+
+async function api(path, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if ((path.startsWith("/configurator/") || path.startsWith("/diagnostics/")) && path !== "/configurator/dev-settings" && state.configuratorApiKey && !headers["x-api-key"]) {
+    headers["x-api-key"] = state.configuratorApiKey;
+  }
+  const res = await fetch(path, {
+    ...options,
+    headers,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = data.detail ?? data.error ?? data;
+    const message = formatApiError(detail, res.statusText);
+    const error = new Error(message);
+    error.status = res.status;
+    error.detail = detail;
+    throw error;
+  }
+  return data;
+}
+
+function formatApiError(detail, fallback = "Request failed") {
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map(item => {
+      if (typeof item === "string") return item;
+      const loc = Array.isArray(item.loc) ? item.loc.join(".") : "";
+      const msg = item.msg || item.message || pretty(item);
+      return loc ? `${loc}: ${msg}` : msg;
+    }).join("\n");
+  }
+  if (typeof detail === "object") return pretty(detail);
+  return String(detail);
+}
+
+function displayValue(value) {
+  if (Array.isArray(value)) return value.map(displayValue).join("\n");
+  if (value && typeof value === "object") return pretty(value);
+  return value == null ? "" : String(value);
+}
+
+function normalizeText(value) {
+  return String(value || "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function textHasPhrase(text, phrase) {
+  const haystack = ` ${normalizeText(text)} `;
+  const needle = normalizeText(String(phrase || "").replaceAll("_", " "));
+  return needle && haystack.includes(` ${needle} `);
+}
+
+function parseTicketContextBlock(value) {
+  const context = {};
+  const body = [];
+  String(value || "").split(/\r?\n/).forEach(line => {
+    const match = line.match(/^\s*(product|permission|permission level|role|access|access channel|channel|platform|website\/mobile app|support mode|mode|similarity|similarity threshold|pinned source ids|pinned sources)\s*:\s*(.*?)\s*$/i);
+    if (!match) {
+      body.push(line);
+      return;
+    }
+    const key = match[1].toLowerCase();
+    const val = match[2].trim();
+    if (key === "product") context.product = val;
+    else if (["permission", "permission level", "role"].includes(key)) context.permissionLevel = val;
+    else if (["access", "access channel", "channel", "platform", "website/mobile app"].includes(key)) context.accessChannel = val;
+    else if (["support mode", "mode"].includes(key)) context.supportOpsMode = val.toLowerCase();
+    else if (["similarity", "similarity threshold"].includes(key)) context.similarityThreshold = val.toLowerCase();
+    else if (["pinned source ids", "pinned sources"].includes(key)) context.pinnedSourceIds = val;
+  });
+  return { context, ticket: body.join("\n").trim() || value };
+}
+
+function escapeHtml(value) {
+  return displayValue(value).replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[ch]));
+}
+
+function impactBadgeText(label) {
+  const value = label || "Applies on next resolve";
+  if (value === "Applies on next resolve") return "Live ✓";
+  if (value === "Requires knowledge reload") return "Reload required";
+  if (value === "Requires app restart") return "Restart required";
+  return value;
+}
+
+function normalizeStaticImpactBadges() {
+  document.querySelectorAll(".impact").forEach(el => {
+    el.textContent = impactBadgeText(el.textContent.trim());
+  });
+}
+
+function impact(path) {
+  const meta = state.fieldMetadata[path] || {};
+  const title = [
+    meta.reason ? `Reason: ${meta.reason}` : "",
+    meta.apply_action ? `Apply action: ${meta.apply_action}` : "",
+    meta.requires_confirmation ? "Requires confirmation." : "",
+  ].filter(Boolean).join(" ");
+  return `<span class="impact" title="${escapeHtml(title)}">${escapeHtml(impactBadgeText(meta.impact || state.impactLabels[path]))}</span>`;
+}
+
+function renderSetupWizard(status) {
+  state.setupWizard = status || {};
+  $("wizardSourceMode").value = status?.source_mode || "demo";
+  const completed = Math.round((status?.completion_ratio || 0) * 100);
+  $("wizardStatus").textContent = `Setup ${completed}% complete. Next: ${status?.next_action || "Validate configuration."}`;
+  const labels = {
+    detect_first_run: "Detect first run",
+    choose_demo_or_custom_source: "Choose source mode",
+    validate_source_contracts: "Validate contracts",
+    map_columns: "Map columns",
+    preview_rows: "Preview rows",
+    preview_chunks: "Preview chunks",
+    run_three_sample_tickets: "Run samples",
+    save_config: "Save config",
+    show_next_action: "Next action",
+    show_reload_restart_notices: "Reload/restart notices",
+  };
+  const localDone = JSON.parse(localStorage.getItem("resolvekit_setup_wizard_steps") || "{}");
+  const steps = { ...(status?.steps || {}), ...localDone };
+  $("wizardSteps").innerHTML = Object.entries(labels).map(([key, label]) =>
+    `<div class="wizard-step ${steps[key] ? "done" : ""}">${steps[key] ? "Done" : "Open"}<br>${escapeHtml(label)}</div>`
+  ).join("");
+}
+
+function updateWizardLocalStep(key, value = true) {
+  const steps = JSON.parse(localStorage.getItem("resolvekit_setup_wizard_steps") || "{}");
+  steps[key] = value;
+  localStorage.setItem("resolvekit_setup_wizard_steps", JSON.stringify(steps));
+  renderSetupWizard(state.setupWizard);
+}
+
+function firstProduct(productsConfig) {
+  const products = productsConfig.products || {};
+  const key = Object.keys(products).find(k => products[k].default_product) || Object.keys(products)[0] || "example_product";
+  return [key, products[key] || {}];
+}
+
+function currentProducts() {
+  return (state.config?.products || {}).products || {};
+}
+
+function productLabel(slug, product) {
+  return product.display_name || product.slug || slug;
+}
+
+function selectedProductConfig() {
+  const products = currentProducts();
+  const selected = $("ticketProduct").value;
+  return products[selected] || Object.values(products).find(p => p.slug === selected) || {};
+}
+
+function applySandboxTicketContext(rawValue) {
+  const parsed = parseTicketContextBlock(rawValue);
+  const products = currentProducts();
+  if (parsed.context.product) {
+    const match = Object.entries(products).find(([slug, product]) =>
+      [slug, product.slug, product.display_name, ...(product.aliases || [])].some(alias => textHasPhrase(parsed.context.product, alias))
+    );
+    if (match) $("ticketProduct").value = match[1].slug || match[0];
+  }
+  const product = selectedProductConfig();
+  if (parsed.context.accessChannel) {
+    const channel = Object.entries(product.platforms || {}).find(([key, platform]) =>
+      [key, platform.normalized, platform.label, ...(platform.aliases || [])].some(alias => textHasPhrase(parsed.context.accessChannel, alias))
+    );
+    if (channel) $("accessChannel").value = channel[0];
+  }
+  if (parsed.context.permissionLevel) {
+    const role = (product.roles?.values || [])
+      .map(item => typeof item === "string" ? { name: item, aliases: [] } : item)
+      .find(item => [item.name, ...(item.aliases || [])].some(alias => textHasPhrase(parsed.context.permissionLevel, alias)));
+    if (role) $("permissionLevel").value = role.name;
+  }
+  if (["query", "chat"].includes(parsed.context.supportOpsMode)) $("supportOpsMode").value = parsed.context.supportOpsMode;
+  if (["none", "low", "medium", "high"].includes(parsed.context.similarityThreshold)) $("similarityThreshold").value = parsed.context.similarityThreshold;
+  if (parsed.context.pinnedSourceIds !== undefined) $("pinnedSourceIds").value = parsed.context.pinnedSourceIds;
+  $("ticketText").value = parsed.ticket;
+}
+
+function renderSandboxControls(selectedProduct = "") {
+  const products = currentProducts();
+  const entries = Object.entries(products);
+  const defaultEntry = entries.find(([, product]) => product.default_product) || entries[0] || ["", {}];
+  const value = selectedProduct || $("ticketProduct").value || defaultEntry[0];
+
+  $("ticketProduct").innerHTML = entries.map(([slug, product]) =>
+    `<option value="${escapeHtml(product.slug || slug)}">${escapeHtml(productLabel(slug, product))}</option>`
+  ).join("");
+  $("ticketProduct").value = value;
+
+  const product = selectedProductConfig();
+  const platforms = Object.entries(product.platforms || {});
+  $("accessChannel").innerHTML = [
+    `<option value="">Select access channel</option>`,
+    ...platforms.map(([key, platform]) =>
+      `<option value="${escapeHtml(key)}">${escapeHtml((platform.normalized || key).replaceAll("_", " "))}</option>`
+    ),
+  ].join("");
+  if (!$("accessChannel").value && platforms.length) $("accessChannel").value = platforms[0][0];
+
+  const roles = (product.roles?.values || []).map(role => typeof role === "string" ? role : role.name).filter(Boolean);
+  $("permissionLevel").innerHTML = [
+    `<option value="">Select permission level</option>`,
+    ...roles.map(role => `<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`),
+  ].join("");
+}
+
+function renderSources(sources) {
+  $("sourcesList").innerHTML = Object.entries(sources || {}).map(([name, s]) => `
+    <div class="source-card" data-source="${name}">
+      <div class="source-head">
+        <strong>${escapeHtml((state.sourceRegistry[name]?.display_name || name).replaceAll("_", " "))} ${impact("sources.enabled")}</strong>
+        <input type="checkbox" class="src-enabled" ${s.enabled ? "checked" : ""}>
+      </div>
+      ${renderSourceContract(name)}
+      <div class="kv">
+        <div class="field"><label>Path ${impact("sources.path")}</label><input class="src-path" value="${escapeHtml(s.path || "")}"></div>
+        <div class="field"><label>Source type ${impact("sources.source_type")}</label><input class="src-type" value="${escapeHtml(s.source_type || name)}"></div>
+        <div class="field"><label>Audience ${impact("sources.enabled")}</label><select class="src-audience"><option value="customer_facing" ${s.audience === "customer_facing" ? "selected" : ""}>Customer-facing</option><option value="internal" ${s.audience === "internal" ? "selected" : ""}>Internal</option><option value="offline_only" ${s.audience === "offline_only" ? "selected" : ""}>Offline only</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Required columns ${impact("sources.column_mapping")}</label><input class="src-required" value="${escapeHtml((s.required_columns || []).join(", "))}"></div>
+        <div class="field"><label>Column mapping JSON ${impact("sources.column_mapping")}</label><textarea class="src-mapping">${pretty(s.column_mapping || {})}</textarea></div>
+      </div>
+      <div class="actions">
+        <button class="btn secondary preview-source" type="button">Preview Source</button>
+        <button class="btn load-source" type="button" disabled>Commit Ingestion Config</button>
+        <button class="btn secondary cancel-preview" type="button">Cancel Preview</button>
+        <button class="btn secondary download-preview" type="button" disabled>Download Preview Report</button>
+      </div>
+      <div class="preview-box hidden"></div>
+    </div>
+  `).join("");
+}
+
+function renderSourceContract(name) {
+  const contract = state.sourceRegistry[name] || {};
+  const required = (contract.required_fields || []).map(group => group.join(" or ")).join(", ");
+  const recommended = (contract.recommended_fields || []).join(", ");
+  const evidence = contract.customer_facing_evidence_allowed ? "Customer-facing evidence allowed." : "Future/offline-only; not customer-facing evidence.";
+  const disabledReason = contract.disabled_reason ? ` ${contract.disabled_reason}` : "";
+  return `<div class="contract-list"><strong>Contract:</strong> required ${escapeHtml(required || "none")}. Recommended ${escapeHtml(recommended || "none")}. ${escapeHtml(evidence + disabledReason)}</div>`;
+}
+
+function keywordList(rule) {
+  return [...new Set([...(rule.heading_keywords || []), ...(rule.content_keywords || [])])];
+}
+
+function renderKeywordChips(containerId, rules) {
+  const container = $(containerId);
+  container.innerHTML = Object.entries(rules || {}).map(([name, rule]) => `
+    <div class="rule-card" data-rule="${escapeHtml(name)}">
+      <h4>${escapeHtml(name.replaceAll("_", " "))}</h4>
+      <div class="chips">
+        ${keywordList(rule).map(k => `<span class="chip">${escapeHtml(k)} <button type="button" data-remove="${escapeHtml(k)}">x</button></span>`).join("")}
+        <input class="mini-input" placeholder="Add keyword">
+        <button class="btn secondary add-keyword" type="button">Add</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderRoutePolicies(policies) {
+  $("routePoliciesSimple").innerHTML = Object.entries(policies || {}).map(([route, policy]) => `
+    <div class="rule-card" data-route="${escapeHtml(route)}">
+      <h4>${escapeHtml(route.replaceAll("_", " "))}</h4>
+      <div class="field"><label>Preferred chunk types</label><input class="route-chunks" value="${escapeHtml((policy.preferred_chunk_types || []).join(", "))}"></div>
+      <div class="field"><label>Preferred source types</label><input class="route-sources" value="${escapeHtml((policy.preferred_source_types || []).join(", "))}"></div>
+      <div class="field"><label>Boost</label><input class="route-boost" type="number" min="0" max="1" step="0.01" value="${Number(policy.boost || 0)}"></div>
+    </div>
+  `).join("");
+}
+
+function renderSourceAuthority(authority) {
+  const visible = Object.entries(authority || {}).filter(([sourceType]) => !RAW_SOURCE_TYPES.has(sourceType));
+  $("sourceAuthoritySimple").innerHTML = visible.map(([sourceType, value]) => `
+    <div class="authority-row" data-source-type="${escapeHtml(sourceType)}">
+      <strong>${escapeHtml(sourceType.replaceAll("_", " "))}</strong>
+      <input class="authority-slider" type="range" min="0" max="1" step="0.05" value="${Number(value)}">
+      <input class="authority-number" type="number" min="0" max="1" step="0.05" value="${Number(value)}">
+    </div>
+  `).join("");
+}
+
+function renderPreview(preview) {
+  const required = (preview.validation?.required || []).map(item =>
+    `${item.present ? "ok" : "missing"}: ${item.field}`
+  ).join("\n");
+  const recommended = (preview.validation?.recommended || []).map(item =>
+    `${item.present ? "ok" : "missing"}: ${item.field}`
+  ).join("\n");
+  const details = `Detected columns: ${(preview.detected_columns || []).join(", ") || "none"}
+
+Required fields:
+${required || "none"}
+
+Recommended fields:
+${recommended || "none"}
+
+Warnings:
+${(preview.warnings || []).join("\n") || "none"}
+
+Errors:
+${(preview.errors || []).join("\n") || "none"}
+
+Sample canonical rows:
+${pretty(preview.sample_canonical_rows || [])}
+
+Sample chunk previews:
+${pretty(preview.sample_chunk_previews || [])}`;
+  return `
+    <strong>${preview.can_load ? "Preview passed" : "Preview blocked"}</strong>
+    <pre>${escapeHtml(details)}</pre>
+  `;
+}
+
+function syncAdvancedJson() {
+  $("chunkRules").value = pretty(state.chunkRules);
+  $("routePolicies").value = pretty(state.routePolicies);
+  $("sourceAuthority").value = pretty(safeAuthorityEditorValue(state.sourceAuthority));
+}
+
+function syncSimpleEditors() {
+  state.chunkRules = parseBox("chunkRules");
+  state.routePolicies = parseBox("routePolicies");
+  state.sourceAuthority = {
+    ...state.sourceAuthority,
+    ...parseBox("sourceAuthority"),
+  };
+  RAW_SOURCE_TYPES.forEach(sourceType => {
+    if (sourceType in state.sourceAuthority) state.sourceAuthority[sourceType] = 0;
+  });
+  renderKeywordChips("chunkRulesSimple", state.chunkRules);
+  renderRoutePolicies(state.routePolicies);
+  renderSourceAuthority(state.sourceAuthority);
+}
+
+function safeAuthorityEditorValue(authority) {
+  return Object.fromEntries(Object.entries(authority || {}).filter(([sourceType]) => !RAW_SOURCE_TYPES.has(sourceType)));
+}
+
+function outputModeDefaults(mode) {
+  const defaults = {
+    resolution_full: ["Issue classification", "Diagnosis", "Root cause", "Resolution steps", "Sources", "Confidence", "Draft email", "Validation flags"],
+    email_draft_only: ["Draft email"],
+    internal_agent_assist: ["Issue classification", "Diagnosis", "Root cause", "Resolution steps", "Sources", "Confidence", "Validation flags"],
+    diagnosis_only: ["Issue classification", "Diagnosis", "Root cause", "Sources", "Confidence"],
+  };
+  return defaults[mode] || [];
+}
+
+function currentOutputPreferences(resolution = {}) {
+  const include = {
+    issue_classification: $("includeIssue").checked,
+    diagnosis: $("includeDiagnosis").checked,
+    root_cause: $("includeDiagnosis").checked,
+    resolution_steps: $("includeSteps").checked,
+    sources: $("includeSources").checked,
+    confidence: $("includeConfidence").checked,
+    draft_email: $("includeEmail").checked,
+    validation_flags: $("includeValidation").checked,
+  };
+  return resolution.output_preferences || {
+    mode: $("outputMode").value,
+    audience: $("audience").value,
+    include,
+  };
+}
+
+function outputSectionEnabled(preferences, key) {
+  const mode = preferences?.mode || "resolution_full";
+  const presets = {
+    resolution_full: {
+      issue_classification: true, diagnosis: true, root_cause: true, resolution_steps: true,
+      sources: true, confidence: true, draft_email: true, validation_flags: true,
+    },
+    email_draft_only: {
+      issue_classification: false, diagnosis: false, root_cause: false, resolution_steps: false,
+      sources: false, confidence: false, draft_email: true, validation_flags: false,
+    },
+    internal_agent_assist: {
+      issue_classification: true, diagnosis: true, root_cause: true, resolution_steps: true,
+      sources: true, confidence: true, draft_email: false, validation_flags: true,
+    },
+    diagnosis_only: {
+      issue_classification: true, diagnosis: true, root_cause: true, resolution_steps: false,
+      sources: true, confidence: true, draft_email: false, validation_flags: false,
+    },
+  };
+  if (mode === "custom") return preferences?.include?.[key] !== false;
+  return presets[mode]?.[key] !== false;
+}
+
+function updateOutputModeUi() {
+  const mode = $("outputMode").value;
+  $("customOutputSections").classList.toggle("hidden", mode !== "custom");
+  const parts = outputModeDefaults(mode);
+  $("outputModeSummary").textContent = mode === "custom"
+    ? "Custom mode: choose exactly which sections the response should return."
+    : `Preset mode: ${parts.join(", ")}. Switch to Custom to edit sections.`;
+}
+
+function updateWorkflowUi() {
+  const mode = $("workflowMode").value;
+  const summaries = {
+    fast: "Fast: responder only. Evaluator and retry are skipped.",
+    standard: "Standard: responder plus evaluator. Retry is skipped.",
+    strict: "Strict: responder plus evaluator, with one retry on low faithfulness.",
+    custom: "Custom: edit stage controls and max LLM calls."
+  };
+  $("workflowSummary").textContent = summaries[mode] || summaries.standard;
+  $("customWorkflowControls").classList.toggle("hidden", mode !== "custom");
+  $("maxLlmCalls").disabled = mode !== "custom";
+}
+
+function formatPlatformDefinitions(platforms) {
+  return Object.entries(platforms || {}).map(([key, platform]) => {
+    const normalized = platform.normalized || key;
+    const aliases = (platform.aliases || []).join(",");
+    return aliases ? `${key}=${normalized}:${aliases}` : `${key}=${normalized}`;
+  }).join("; ");
+}
+
+function parsePlatformDefinitions(value) {
+  const platforms = {};
+  const items = value.includes(";") ? value.split(";") : value.split(",");
+  items.map(item => item.trim()).filter(Boolean).forEach(item => {
+    let key = item;
+    let normalized = item;
+    let aliases = [item];
+    if (item.includes("=")) {
+      const [left, right] = item.split("=", 2);
+      key = left.trim();
+      const [norm, aliasText = ""] = right.split(":", 2);
+      normalized = (norm || key).trim();
+      aliases = list(aliasText);
+      if (!aliases.length) aliases = [key];
+    }
+    if (key) platforms[key] = { normalized, aliases, enabled: true };
+  });
+  return platforms;
+}
+
+function loadIntoForm(config) {
+  const [slug, product] = firstProduct(config.products || {});
+  $("productName").value = product.display_name || "";
+  $("productSlug").value = slug || product.slug || "";
+  $("productAliases").value = (product.aliases || []).join(", ");
+  $("platforms").value = formatPlatformDefinitions(product.platforms || {});
+  $("roles").value = ((product.roles || {}).values || []).map(r => r.name || r).join(", ");
+
+  const output = (config.output || {}).output || {};
+  $("outputMode").value = output.mode || "resolution_full";
+  $("audience").value = output.audience || "internal_assist";
+  $("includeIssue").checked = output.include?.issue_classification !== false;
+  $("includeDiagnosis").checked = output.include?.diagnosis !== false;
+  $("includeSteps").checked = output.include?.resolution_steps !== false;
+  $("includeSources").checked = output.include?.sources !== false;
+  $("includeConfidence").checked = output.include?.confidence !== false;
+  $("includeEmail").checked = output.include?.draft_email !== false;
+  $("includeValidation").checked = output.include?.validation_flags !== false;
+  updateOutputModeUi();
+
+  renderSources((config.sources || {}).sources || {});
+  const rp = config.retrieval_policy || {};
+  state.chunkRules = rp.chunk_type_rules || {};
+  state.routePolicies = rp.route_policies || {};
+  state.sourceAuthority = rp.source_authority || {};
+  syncAdvancedJson();
+  renderKeywordChips("chunkRulesSimple", state.chunkRules);
+  renderRoutePolicies(state.routePolicies);
+  renderSourceAuthority(state.sourceAuthority);
+  $("parentExpansion").checked = rp.retrieval?.parent_section_expansion !== false;
+  $("piiRedaction").checked = rp.privacy?.pii_redaction?.enabled !== false;
+
+  const wf = (config.workflow || {}).workflow || {};
+  $("workflowMode").value = wf.mode || "standard";
+  $("maxLlmCalls").value = wf.max_llm_calls ?? 2;
+  $("stageEvaluator").checked = wf.stages?.evaluator?.enabled !== false;
+  $("stageRetry").checked = wf.stages?.responder_retry?.enabled === true;
+  updateWorkflowUi();
+  renderSandboxControls(product.slug || slug || "");
+}
+
+function collectConfig() {
+  syncSimpleEditors();
+  const old = state.config || {};
+  const slug = $("productSlug").value.trim() || "example_product";
+  const platforms = parsePlatformDefinitions($("platforms").value);
+  const roles = list($("roles").value).map(name => ({ name, aliases: [] }));
+  const sources = {};
+  document.querySelectorAll(".source-card").forEach(card => {
+    const name = card.dataset.source;
+    sources[name] = {
+      enabled: card.querySelector(".src-enabled").checked,
+      path: card.querySelector(".src-path").value.trim(),
+      source_type: card.querySelector(".src-type").value.trim() || name,
+      audience: card.querySelector(".src-audience").value,
+      default_authority: state.config?.sources?.sources?.[name]?.default_authority ?? 1,
+      required_columns: list(card.querySelector(".src-required").value),
+      column_mapping: JSON.parse(card.querySelector(".src-mapping").value || "{}")
+    };
+  });
+  const retrieval = { ...(old.retrieval_policy?.retrieval || {}) };
+  const privacy = { ...(old.retrieval_policy?.privacy || { pii_redaction: {} }) };
+  retrieval.parent_section_expansion = $("parentExpansion").checked;
+  privacy.pii_redaction = { ...(privacy.pii_redaction || {}), enabled: $("piiRedaction").checked };
+  const workflowMode = $("workflowMode").value;
+  const workflowModes = {
+    ...(old.workflow?.workflow?.modes || {}),
+    fast: { responder: true, evaluator: false, retry_responder_on_low_faithfulness: false },
+    standard: { responder: true, evaluator: true, retry_responder_on_low_faithfulness: false },
+    strict: { responder: true, evaluator: true, retry_responder_on_low_faithfulness: true },
+    custom: {
+      responder: true,
+      evaluator: $("stageEvaluator").checked,
+      retry_responder_on_low_faithfulness: $("stageRetry").checked
+    }
+  };
+  const maxCallsByMode = { fast: 1, standard: 2, strict: 3 };
+  const maxCalls = workflowMode === "custom"
+    ? Number($("maxLlmCalls").value || 1)
+    : maxCallsByMode[workflowMode] || 2;
+
+  return {
+    products: { products: {
+      [slug]: {
+        display_name: $("productName").value.trim() || "Example Product",
+        slug,
+        aliases: list($("productAliases").value),
+        default_product: true,
+        platforms,
+        roles: { required: false, values: roles }
+      }
+    }},
+    sources: { sources },
+	    output: { output: {
+	      mode: $("outputMode").value,
+	      audience: $("audience").value,
+	      include: {
+	        issue_classification: $("includeIssue").checked,
+	        diagnosis: $("includeDiagnosis").checked,
+	        resolution_steps: $("includeSteps").checked,
+	        sources: $("includeSources").checked,
+	        confidence: $("includeConfidence").checked,
+	        draft_email: $("includeEmail").checked,
+	        validation_flags: $("includeValidation").checked
+	      },
+      email: old.output?.output?.email || { greeting: "Hi,", signoff: "Kind regards,", tone: "professional_warm" },
+      diagnosis: old.output?.output?.diagnosis || { max_lines: 3 }
+    }},
+	    retrieval_policy: {
+	      ...(old.retrieval_policy || {}),
+	      chunk_type_rules: state.chunkRules,
+	      route_policies: state.routePolicies,
+	      source_authority: state.sourceAuthority,
+	      retrieval,
+	      privacy
+	    },
+	    workflow: { workflow: {
+	      mode: workflowMode,
+	      llm_budget_preset: workflowMode === "fast" ? "minimal" : workflowMode === "strict" ? "strict_quality" : workflowMode === "custom" ? "custom" : "balanced",
+	      max_llm_calls: maxCalls,
+	      modes: workflowModes,
+	      stages: {
+	        query_builder: { enabled: false, counts_toward_budget: true },
+	        responder: { enabled: true, counts_toward_budget: true },
+	        evaluator: { enabled: workflowModes[workflowMode]?.evaluator !== false, counts_toward_budget: true },
+	        responder_retry: { enabled: workflowModes[workflowMode]?.retry_responder_on_low_faithfulness === true, counts_toward_budget: true }
+	      }
+	    }}
+  };
+}
+
+async function loadConfig() {
+  await loadDevSettings();
+  const data = await api("/configurator/config");
+  state.config = data.config;
+  state.sourceRegistry = data.source_registry || {};
+  state.impactLabels = data.impact_labels || {};
+  state.fieldMetadata = data.field_metadata || {};
+  loadIntoForm(state.config);
+  renderSetupWizard(data.setup_wizard || {});
+  showValidation(data.validation);
+  clearDirty();
+  setStatus("Configuration loaded from local YAML files.");
+}
+
+async function loadDevSettings() {
+  const saved = localStorage.getItem("ai_bot_api_key");
+  if (saved && !$("apiKey").value) {
+    $("apiKey").value = saved;
+  }
+  try {
+    const data = await api("/configurator/dev-settings");
+    if (data.prefill_api_key && data.configurator_api_key) {
+      state.configuratorApiKey = data.configurator_api_key;
+      localStorage.setItem("resolvekit_configurator_api_key", data.configurator_api_key);
+    }
+    if (data.prefill_api_key && data.api_key && !$("apiKey").value) {
+      $("apiKey").value = data.api_key;
+      localStorage.setItem("ai_bot_api_key", data.api_key);
+    }
+  } catch (e) {
+    console.debug("Configurator dev settings unavailable", e);
+  }
+}
+
+function persistApiKey() {
+  const value = $("apiKey").value.trim();
+  if (value) localStorage.setItem("ai_bot_api_key", value);
+  else localStorage.removeItem("ai_bot_api_key");
+}
+
+function sandboxLog(lines) {
+  const box = $("sandboxLog");
+  box.innerHTML = `<strong>Sandbox Logs</strong>${escapeHtml(lines.join("\n"))}`;
+}
+
+function statusClass(status) {
+  return `status-pill status-${String(status || "unknown").toLowerCase()}`;
+}
+
+function diagnosticLog(level, event, message, metadata = {}, chatId = "") {
+  if (state.logsPaused && !event.startsWith("diagnostics.")) return;
+  state.diagnosticLogs.unshift({
+    id: `log_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    timestamp: new Date().toISOString(),
+    level,
+    event,
+    message,
+    chatId,
+    metadata
+  });
+  state.diagnosticLogs = state.diagnosticLogs.slice(0, 250);
+  renderDiagnosticLogs();
+}
+
+function runtimeConfiguratorState() {
+  let current = state.config || {};
+  try {
+    current = collectConfig();
+  } catch (e) {
+    current = state.config || {};
+  }
+  const productEntry = firstProduct(current.products || {});
+  const product = productEntry[1] || {};
+  const workflow = current.workflow?.workflow || {};
+  const retrievalPolicy = current.retrieval_policy || {};
+  return {
+    llmProvider: "server_active_provider",
+    model: "server_configured_model",
+    embeddingProvider: "local_embedding_provider",
+    product: product.slug || productEntry[0] || "",
+    outputMode: current.output?.output?.mode || "",
+    workflowMode: workflow.mode || "",
+    maxLlmCalls: workflow.max_llm_calls ?? null,
+    retrievalTopK: retrievalPolicy.retrieval?.top_k || retrievalPolicy.retrieval?.top_k_retrieval || null,
+    chunkSize: retrievalPolicy.chunking?.chunk_size || null,
+    chunkOverlap: retrievalPolicy.chunking?.chunk_overlap || null,
+    vectorStore: "postgres",
+    rerankerEnabled: workflow.stages?.evaluator?.enabled !== false,
+    filters: {
+      routePolicies: Object.keys(retrievalPolicy.route_policies || {}),
+      sourceAuthority: retrievalPolicy.source_authority || {}
+    },
+    pendingChanges: Array.from(state.pendingChanges),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function renderConfigSnapshot() {
+  const box = $("configSnapshot");
+  if (!box) return;
+  box.textContent = pretty(runtimeConfiguratorState());
+}
+
+function renderEnvDiagnostics() {
+  const box = $("envDiagnostics");
+  if (!box) return;
+  if (!state.diagnosticEnv.length) {
+    box.textContent = "No environment diagnostics loaded.";
+    return;
+  }
+  box.innerHTML = `<table class="env-table">
+    <thead><tr><th>Key</th><th>Status</th><th>Required</th><th>Present</th><th>Safe Preview</th><th>Description</th></tr></thead>
+    <tbody>${state.diagnosticEnv.map(item => `
+      <tr>
+        <td><code>${escapeHtml(item.key)}</code></td>
+        <td><span class="${statusClass(item.status)}">${escapeHtml(item.status)}</span></td>
+        <td>${item.required ? "yes" : "no"}</td>
+        <td>${item.present ? "yes" : "no"}</td>
+        <td><code>${escapeHtml(item.safeValuePreview || "")}</code></td>
+        <td>${escapeHtml(item.description || "")}</td>
+      </tr>
+    `).join("")}</tbody>
+  </table>`;
+}
+
+function renderDiagnosticCards() {
+  const box = $("diagnosticCards");
+  if (!box) return;
+  if (!state.diagnosticResults.length) {
+    box.innerHTML = `<div class="notice">No checks loaded. Click Refresh or Test All.</div>`;
+    return;
+  }
+  $("diagnosticsSummary").textContent = `${state.diagnosticResults.length} checks`;
+  box.innerHTML = state.diagnosticResults.map(result => `
+    <article class="diagnostic-card" data-check="${escapeHtml(result.id)}">
+      <div class="diagnostic-head">
+        <h3>${escapeHtml(result.name)}</h3>
+        <span class="${statusClass(result.status)}">${escapeHtml(result.status)}</span>
+      </div>
+      <p>${escapeHtml(result.message)}</p>
+      <pre>${escapeHtml(pretty(result.details || {}))}</pre>
+      ${(result.suggestions || []).length ? `<div class="notice"><strong>How to fix:</strong><br>${(result.suggestions || []).map(escapeHtml).join("<br>")}</div>` : ""}
+      <div class="actions">
+        <button class="btn secondary diagnostic-test" type="button" data-check="${escapeHtml(result.id)}">${state.runningChecks.has(result.id) ? "Testing..." : "Test"}</button>
+      </div>
+      <p>Last tested: ${escapeHtml(result.testedAt || "never")} | ${escapeHtml(result.durationMs ?? "-")}ms</p>
+    </article>
+  `).join("");
+}
+
+function renderDiagnosticLogs() {
+  const box = $("diagnosticLogs");
+  if (!box) return;
+  const level = $("levelFilter")?.value || "";
+  const chat = normalizeText($("chatFilter")?.value || "");
+  const search = normalizeText($("logSearch")?.value || "");
+  const rows = state.diagnosticLogs.filter(entry => {
+    if (level && entry.level !== level) return false;
+    if (chat && !normalizeText(entry.chatId).includes(chat)) return false;
+    if (search && !normalizeText(`${entry.event} ${entry.message} ${pretty(entry.metadata)}`).includes(search)) return false;
+    return true;
+  });
+  box.textContent = rows.length
+    ? rows.map(entry => `[${entry.timestamp}] ${entry.level.toUpperCase()} ${entry.event}${entry.chatId ? ` chat=${entry.chatId}` : ""} - ${entry.message}${entry.metadata && Object.keys(entry.metadata).length ? `\n  ${pretty(entry.metadata)}` : ""}`).join("\n")
+    : "No logs match current filters.";
+}
+
+function extractRetrievedChunks(resolution) {
+  const signals = resolution?.retrieval_signals || {};
+  const bundles = signals.support_context_bundles || [];
+  const chunks = [];
+  bundles.forEach((bundle, bundleIndex) => {
+    const bundleChunks = bundle.chunks || bundle.selected_chunks || [];
+    if (Array.isArray(bundleChunks) && bundleChunks.length) {
+      bundleChunks.forEach((chunk, index) => chunks.push({
+        chunkId: chunk.chunk_id || chunk.id || `${bundle.source_id || "chunk"}_${index}`,
+        sourceId: chunk.source_id || bundle.source_id || "",
+        sourceName: chunk.source_name || bundle.source_name || bundle.source_id || "",
+        sourcePath: chunk.source_path || bundle.source_path || "",
+        rank: chunk.rank ?? index + 1,
+        score: chunk.score ?? chunk.rerank_score ?? null,
+        text: chunk.text || chunk.content || chunk.display_text || pretty(chunk),
+        metadata: chunk.metadata || bundle.metadata || {},
+        usedInPrompt: true,
+        retrievedAt: new Date().toISOString()
+      }));
+    } else {
+      chunks.push({
+        chunkId: bundle.chunk_id || bundle.id || `bundle_${bundleIndex + 1}`,
+        sourceId: bundle.source_id || "",
+        sourceName: bundle.source_name || bundle.source_id || "",
+        sourcePath: bundle.source_path || "",
+        rank: bundle.rank ?? bundleIndex + 1,
+        score: bundle.score ?? bundle.rerank_score ?? null,
+        text: bundle.text || bundle.content || bundle.display_text || pretty(bundle),
+        metadata: bundle.metadata || {},
+        usedInPrompt: true,
+        retrievedAt: new Date().toISOString()
+      });
+    }
+  });
+  if (!chunks.length) {
+    (signals.retrieved_chunk_ids || []).forEach((id, index) => chunks.push({
+      chunkId: id,
+      rank: index + 1,
+      score: (signals.rerank_scores || [])[index] ?? null,
+      text: "Chunk text unavailable in response. Fetch the trace for full run detail.",
+      metadata: { source_selection: signals.source_selection || [] },
+      usedInPrompt: true,
+      retrievedAt: new Date().toISOString()
+    }));
+  }
+  return chunks;
+}
+
+function createChatDiagnosticSession(question, requestPayload, configSnapshot) {
+  const chatId = `chat_${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}_${state.chatSessions.length + 1}`;
+  const session = {
+    chatId,
+    question,
+    createdAt: new Date().toISOString(),
+    status: "pending",
+    configSnapshot,
+    requestMetadata: requestPayload,
+    logs: [],
+    replayHistory: []
+  };
+  state.chatSessions.unshift(session);
+  ["chat.created", "question.received", "retrieval.started"].forEach(event => {
+    const entry = { timestamp: new Date().toISOString(), level: "info", event, message: event, chatId, metadata: {} };
+    session.logs.push(entry);
+    diagnosticLog("info", event, event, {}, chatId);
+  });
+  renderChatDiagnostics();
+  return session;
+}
+
+function completeChatDiagnosticSession(session, resolution, elapsedMs) {
+  const signals = resolution?.retrieval_signals || {};
+  const usage = resolution?.usage_summary || {};
+  const workflow = resolution?.llm_workflow || {};
+  session.traceId = resolution?.trace_id || "";
+  session.completedAt = new Date().toISOString();
+  session.status = "completed";
+  session.retrieval = {
+    query: resolution?.query || session.question,
+    startedAt: session.createdAt,
+    completedAt: session.completedAt,
+    durationMs: elapsedMs,
+    topK: signals.retrieved_chunk_ids?.length || null,
+    filters: session.configSnapshot.filters || {},
+    chunks: extractRetrievedChunks(resolution)
+  };
+  session.llmCall = {
+    provider: resolution?.provider || session.configSnapshot.llmProvider || "unknown",
+    model: workflow.model || session.configSnapshot.model || "unknown",
+    startedAt: session.createdAt,
+    completedAt: session.completedAt,
+    durationMs: elapsedMs,
+    tokenUsage: {
+      input: usage.query_tokens_in || usage.response_tokens_in,
+      output: usage.query_tokens_out || usage.response_tokens_out,
+      total: usage.total_tokens
+    },
+    requestMetadata: session.requestMetadata,
+    responseMetadata: { workflow, confidence: resolution?.confidence || "" }
+  };
+  session.answer = resolution?.draft_email || resolution?.resolution_steps || resolution?.diagnosis || "";
+  ["retrieval.completed", "chunks.selected", "llm.call.started", "llm.call.completed", "answer.generated"].forEach(event => {
+    const entry = { timestamp: new Date().toISOString(), level: "success", event, message: event, chatId: session.chatId, metadata: {} };
+    session.logs.push(entry);
+    diagnosticLog("success", event, event, {}, session.chatId);
+  });
+  renderChatDiagnostics();
+}
+
+function failChatDiagnosticSession(session, error, elapsedMs) {
+  session.completedAt = new Date().toISOString();
+  session.status = "failed";
+  session.errors = [{ message: error.message, durationMs: elapsedMs, timestamp: session.completedAt }];
+  ["retrieval.failed", "llm.call.failed"].forEach(event => diagnosticLog("error", event, error.message, {}, session.chatId));
+  renderChatDiagnostics();
+}
+
+function renderChatDiagnostics() {
+  const box = $("chatDiagnostics");
+  if (!box) return;
+  if (!state.chatSessions.length) {
+    box.textContent = "No chat diagnostic sessions yet. Run a ticket in Ticket Sandbox.";
+    return;
+  }
+  box.innerHTML = state.chatSessions.map(session => `
+    <article class="chat-card" data-chat="${escapeHtml(session.chatId)}">
+      <div class="diagnostic-head">
+        <h4>Chat ID: ${escapeHtml(session.chatId)}</h4>
+        <span class="${statusClass(session.status === "completed" ? "ok" : session.status === "failed" ? "fail" : "warn")}">${escapeHtml(session.status)}</span>
+      </div>
+      <div class="chat-meta">
+        <span>Trace: ${escapeHtml(session.traceId || "pending")}</span>
+        <span>Model: ${escapeHtml(session.llmCall?.model || session.configSnapshot?.model || "unknown")}</span>
+        <span>Chunks Used: ${escapeHtml(session.retrieval?.chunks?.length ?? 0)}</span>
+        <span>Started: ${escapeHtml(session.createdAt)}</span>
+      </div>
+      <p><strong>Question:</strong> ${escapeHtml(session.question)}</p>
+      <div class="actions">
+        <button class="btn secondary view-chat-logs" type="button" data-chat="${escapeHtml(session.chatId)}">View Logs</button>
+        <button class="btn secondary copy-all-chunks" type="button" data-chat="${escapeHtml(session.chatId)}">Copy All Chunks</button>
+        <button class="btn secondary view-trace-diagnostics" type="button" data-chat="${escapeHtml(session.chatId)}">View Trace</button>
+        <button class="btn secondary replay-chat" type="button" data-chat="${escapeHtml(session.chatId)}">Replay This Run</button>
+      </div>
+      <details open>
+        <summary>Trace Viewer MVP</summary>
+        <pre class="metadata-box">${escapeHtml(pretty(session.traceDiagnostics || {
+          request: session.requestMetadata,
+          confidence: session.llmCall?.responseMetadata?.confidence || "",
+          final_response: session.answer || "",
+          retrieved_candidates: session.retrieval?.chunks || [],
+          validation: "Fetch trace diagnostics after a run completes.",
+          stage_timings: [],
+          feedback_action: "",
+          create_knowledge_issue_action: session.traceId ? `/knowledge-issues?trace_id=${session.traceId}` : ""
+        }))}</pre>
+      </details>
+      <details>
+        <summary>View Metadata</summary>
+        <pre class="metadata-box">${escapeHtml(pretty({ configSnapshot: session.configSnapshot, llmCall: session.llmCall, errors: session.errors || [] }))}</pre>
+      </details>
+      <details>
+        <summary>View Chunks</summary>
+        <div class="chunk-list">${(session.retrieval?.chunks || []).map(chunk => `
+          <div class="chunk-item">
+            <div class="chat-meta"><span>${escapeHtml(chunk.chunkId)}</span><span>Rank ${escapeHtml(chunk.rank ?? "-")}</span><span>Score ${escapeHtml(chunk.score ?? "-")}</span><span>${escapeHtml(chunk.sourceName || chunk.sourceId || "unknown source")}</span></div>
+            <pre class="chunk-text">${escapeHtml(chunk.text)}</pre>
+            <button class="copy-small copy-chunk" type="button" data-chat="${escapeHtml(session.chatId)}" data-chunk="${escapeHtml(chunk.chunkId)}">Copy Chunk</button>
+          </div>
+        `).join("") || "No chunks captured."}</div>
+      </details>
+      <details>
+        <summary>Replay History</summary>
+        <pre class="metadata-box">${escapeHtml(pretty(session.replayHistory || []))}</pre>
+      </details>
+    </article>
+  `).join("");
+}
+
+async function loadDiagnostics() {
+  try {
+    renderConfigSnapshot();
+    const [configData, checksData, logData] = await Promise.all([
+      api("/diagnostics/config"),
+      api("/diagnostics/checks"),
+      api("/diagnostics/logs")
+    ]);
+    state.diagnosticEnv = configData.config || [];
+    state.diagnosticResults = checksData.checks || [];
+    (logData.logs || []).reverse().forEach(entry => state.diagnosticLogs.push(entry));
+    state.diagnosticLogs = state.diagnosticLogs.slice(0, 250);
+    $("diagnosticsUpdated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    renderEnvDiagnostics();
+    renderDiagnosticCards();
+    renderDiagnosticLogs();
+    diagnosticLog("info", "env.validation.completed", "Diagnostics refreshed.");
+  } catch (e) {
+    setStatus(`Diagnostics unavailable: ${e.message}`);
+    diagnosticLog("error", "diagnostics.test.failed", e.message);
+  }
+}
+
+async function runDiagnosticCheckById(checkId) {
+  state.runningChecks.add(checkId);
+  renderDiagnosticCards();
+  diagnosticLog("info", "diagnostics.test.started", `Running ${checkId}`, { checkId });
+  try {
+    const data = await api(`/diagnostics/checks/${checkId}`, { method: "POST" });
+    const result = data.result;
+    state.diagnosticResults = state.diagnosticResults.filter(item => item.id !== checkId).concat([result]);
+    diagnosticLog(result.status === "fail" ? "error" : result.status === "warn" ? "warn" : "success", "diagnostics.test.completed", result.message, { checkId, durationMs: result.durationMs });
+  } catch (e) {
+    diagnosticLog("error", "diagnostics.test.failed", e.message, { checkId });
+  } finally {
+    state.runningChecks.delete(checkId);
+    renderDiagnosticCards();
+  }
+}
+
+async function testAllDiagnostics() {
+  diagnosticLog("info", "diagnostics.test_all.started", "Running all diagnostics.");
+  const ids = state.diagnosticResults.length ? state.diagnosticResults.map(item => item.id) : [
+    "app_runtime", "database", "vector_store", "llm_provider", "embedding_provider", "retrieval_pipeline",
+    "rate_limit", "auth_config", "storage", "cors_urls", "external_integrations", "recent_logs", "chat_diagnostics"
+  ];
+  for (const id of ids) {
+    await runDiagnosticCheckById(id);
+  }
+  diagnosticLog("success", "diagnostics.test_all.completed", "All diagnostics finished.", { count: ids.length });
+}
+
+async function replayChatSession(chatId) {
+  const session = state.chatSessions.find(item => item.chatId === chatId);
+  if (!session) return;
+  const replay = {
+    replayId: `replay_${Date.now()}`,
+    chatId,
+    originalChatId: chatId,
+    mode: "same_chunks_new_llm",
+    startedAt: new Date().toISOString(),
+    status: "pending",
+    question: session.question,
+    chunksUsed: session.retrieval?.chunks || []
+  };
+  session.replayHistory.unshift(replay);
+  diagnosticLog("info", "replay.started", "Replay This Run started.", { traceId: session.traceId }, chatId);
+  diagnosticLog("info", "replay.using_existing_chunks", "Using same chunks + new LLM call.", { chunks: replay.chunksUsed.length }, chatId);
+  try {
+    if (!session.traceId) throw new Error("Trace ID unavailable for replay.");
+    diagnosticLog("info", "replay.llm.call.started", "Replay LLM call started.", {}, chatId);
+    const data = await api(`/traces/${encodeURIComponent(session.traceId)}/replay`, { method: "POST", headers: { "x-api-key": $("apiKey").value } });
+    replay.completedAt = new Date().toISOString();
+    replay.status = "completed";
+    replay.llmCall = { provider: session.llmCall?.provider || "unknown", model: session.llmCall?.model || "unknown", responseMetadata: data.replay || {} };
+    replay.answer = data.replay?.final_response || data.replay?.answer || pretty(data.replay || {});
+    diagnosticLog("success", "replay.llm.call.completed", "Replay LLM call completed.", {}, chatId);
+    diagnosticLog("success", "replay.completed", "Replay completed.", {}, chatId);
+  } catch (e) {
+    replay.completedAt = new Date().toISOString();
+    replay.status = "failed";
+    replay.error = { message: e.message };
+    diagnosticLog("error", "replay.failed", e.message, {}, chatId);
+  }
+  renderChatDiagnostics();
+}
+
+async function loadTraceDiagnosticsForSession(chatId) {
+  const session = state.chatSessions.find(item => item.chatId === chatId);
+  if (!session || !session.traceId) return;
+  diagnosticLog("info", "trace.diagnostics.started", "Trace diagnostics requested.", { traceId: session.traceId }, chatId);
+  try {
+    const data = await api(`/traces/${encodeURIComponent(session.traceId)}/diagnostics`, { headers: { "x-api-key": $("apiKey").value } });
+    session.traceDiagnostics = data.diagnostics || {};
+    diagnosticLog("success", "trace.diagnostics.completed", "Trace diagnostics loaded.", { traceId: session.traceId }, chatId);
+  } catch (e) {
+    session.traceDiagnostics = { error: e.message };
+    diagnosticLog("error", "trace.diagnostics.failed", e.message, { traceId: session.traceId }, chatId);
+  }
+  renderChatDiagnostics();
+}
+
+function summarizeSandboxRun(resolution, elapsedMs) {
+  const signals = resolution.retrieval_signals || {};
+  const workflow = resolution.llm_workflow || {};
+  const evalScore = resolution.eval_score || {};
+  const validation = resolution.validation || {};
+  const bundles = signals.support_context_bundles || [];
+  const lines = [
+    `Completed in ${(elapsedMs / 1000).toFixed(2)}s`,
+    `Confidence: ${resolution.confidence || "unknown"}`,
+    `Workflow: ${workflow.mode || "unknown"} | LLM calls used: ${workflow.llm_calls_used ?? "unknown"} / ${workflow.max_llm_calls ?? "unknown"}`,
+    `Evaluator: ${evalScore.evaluation_skipped ? "skipped" : (evalScore.faithfulness || "not reported")}`,
+    `Retrieval cache: ${signals.used_retrieval_cache ? "hit" : "miss"} | Response cache: ${signals.used_response_cache ? "hit" : "miss"}`,
+    `Top score: ${signals.top_score ?? "n/a"} | Score gap: ${signals.score_gap ?? "n/a"}`,
+    `Selected chunks: ${(signals.retrieved_chunk_ids || []).join(", ") || "none"}`,
+    `Source selection: ${(signals.source_selection || []).join(" | ") || "none"}`,
+    `Support bundles: ${bundles.length}`,
+  ];
+  if (validation.gatekeeper_flagged) lines.push("Validation: human review suggested");
+  if (validation.condition_context?.missing_required_context) {
+    lines.push(`Missing context: ${(validation.condition_context.missing_context_fields || []).join(", ")}`);
+  }
+  if (evalScore.summary) lines.push(`Evaluator note: ${evalScore.summary}`);
+  return lines;
+}
+
+function showView(view, updateHash = true) {
+  document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+  const active = document.querySelector(`.nav button[data-view="${view}"]`);
+  if (active) active.classList.add("active");
+  $("configView").classList.toggle("hidden", view !== "config");
+  $("sandboxView").classList.toggle("hidden", view !== "sandbox");
+  $("diagnosticsView").classList.toggle("hidden", view !== "diagnostics");
+  if (view === "diagnostics") {
+    renderConfigSnapshot();
+    renderEnvDiagnostics();
+    renderDiagnosticCards();
+    renderDiagnosticLogs();
+    renderChatDiagnostics();
+    if (!state.diagnosticResults.length) loadDiagnostics();
+  }
+  if (updateHash) window.history.replaceState(null, "", `#${view}`);
+}
+
+function viewFromHash() {
+  if (location.hash === "#diagnostics") return "diagnostics";
+  return location.hash === "#sandbox" ? "sandbox" : "config";
+}
+
+document.querySelectorAll(".nav button").forEach(btn => btn.addEventListener("click", () => {
+  showView(btn.dataset.view);
+}));
+window.addEventListener("hashchange", () => showView(viewFromHash(), false));
+document.querySelectorAll(".tabs button").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  $("basicTab").classList.toggle("hidden", btn.dataset.tab !== "basic");
+  $("advancedTab").classList.toggle("hidden", btn.dataset.tab !== "advanced");
+}));
+
+$("validateBtn").addEventListener("click", async () => {
+  try {
+    const data = await api("/configurator/validate", { method: "POST", body: JSON.stringify(collectConfig()) });
+    showValidation(data.validation);
+    setStatus("Validation complete.");
+  } catch (e) { setStatus(e.message); }
+});
+$("saveBtn").addEventListener("click", async () => {
+  try {
+    const data = await api("/configurator/config", { method: "POST", body: JSON.stringify(collectConfig()) });
+    state.config = data.config;
+    state.impactLabels = data.impact_labels || state.impactLabels;
+    state.fieldMetadata = data.field_metadata || state.fieldMetadata;
+    loadIntoForm(state.config);
+    renderSetupWizard(data.setup_wizard || state.setupWizard || {});
+    showValidation(data.validation);
+    clearDirty();
+    setStatus(`${data.apply_status || "Saved and applied."} Saved: ${data.saved.join(", ")}`);
+  } catch (e) { setStatus(e.message); }
+});
+$("reloadNoticeBtn").addEventListener("click", () => {
+  setStatus("Reload knowledge with: python knowledge_loader/kb_loader.py. Use python scripts/rebuild_db.py first when you need a clean rebuild.");
+});
+$("restartNoticeBtn").addEventListener("click", () => {
+  setStatus("Restart the FastAPI app after database URL, provider/model, warmup, server, or auth environment changes.");
+});
+$("wizardSourceMode").addEventListener("change", () => {
+  updateWizardLocalStep("choose_demo_or_custom_source");
+  markDirty("source mode");
+});
+$("wizardPreviewFirst").addEventListener("click", () => {
+  const first = document.querySelector(".source-card .preview-source");
+  if (first) {
+    first.click();
+    updateWizardLocalStep("preview_rows");
+    updateWizardLocalStep("preview_chunks");
+  }
+});
+$("wizardSave").addEventListener("click", () => $("saveBtn").click());
+$("wizardDone").addEventListener("click", () => {
+  localStorage.setItem("resolvekit_setup_wizard_completed_at", new Date().toISOString());
+  ["detect_first_run", "show_next_action", "show_reload_restart_notices"].forEach(step => updateWizardLocalStep(step));
+  setStatus("Setup wizard marked complete.");
+});
+$("wizardRunSamples").addEventListener("click", async () => {
+  const samples = [
+    "Customer cannot sign in on mobile app after role change.",
+    "Billing owner asks where to download invoice.",
+    "Agent sees queued reply badge on mobile app."
+  ];
+  const key = $("apiKey")?.value || localStorage.getItem("ai_bot_api_key") || "";
+  if (!key) {
+    setStatus("API key required in Ticket Sandbox before running wizard samples.");
+    showView("sandbox");
+    return;
+  }
+  showView("sandbox");
+  for (const sample of samples) {
+    $("ticketText").value = sample;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await $("resolveBtn").click();
+  }
+  updateWizardLocalStep("run_three_sample_tickets");
+});
+$("resolveBtn").addEventListener("click", async () => {
+  $("resolutionOutput").textContent = "Running...";
+  const started = performance.now();
+  applySandboxTicketContext($("ticketText").value);
+  const requestPayload = {
+    ticket: $("ticketText").value,
+    support_ops_mode: $("supportOpsMode").value,
+    product: $("ticketProduct").value,
+    permission_level: $("permissionLevel").value,
+    access_channel: $("accessChannel").value,
+    similarity_threshold: $("similarityThreshold").value,
+    pinned_source_ids: list($("pinnedSourceIds").value)
+  };
+  const chatSession = createChatDiagnosticSession($("ticketText").value, requestPayload, runtimeConfiguratorState());
+  sandboxLog([
+    "Submitting /resolve request...",
+    `Product: ${$("ticketProduct").value || "(none)"}`,
+    `Access channel: ${$("accessChannel").value || "(none)"}`,
+    `Permission level: ${$("permissionLevel").value || "(none)"}`,
+    `Support mode: ${$("supportOpsMode").value}`,
+    `Similarity threshold: ${$("similarityThreshold").value}`,
+    `Pinned source IDs: ${$("pinnedSourceIds").value || "none"}`,
+    `Ticket characters: ${$("ticketText").value.length}`,
+  ]);
+  try {
+    persistApiKey();
+    const data = await api("/resolve", {
+      method: "POST",
+      headers: { "x-api-key": $("apiKey").value },
+      body: JSON.stringify(requestPayload)
+    });
+    $("resolutionOutput").innerHTML = renderResolution(data.resolution);
+    sandboxLog(summarizeSandboxRun(data.resolution || {}, performance.now() - started));
+    completeChatDiagnosticSession(chatSession, data.resolution || {}, performance.now() - started);
+  } catch (e) {
+    $("resolutionOutput").textContent = e.message;
+    sandboxLog([
+      `Request failed after ${((performance.now() - started) / 1000).toFixed(2)}s`,
+      e.status ? `HTTP status: ${e.status}` : "HTTP status: unavailable",
+      e.message,
+      "Check API key, server status, config validity, and database connectivity.",
+    ]);
+    failChatDiagnosticSession(chatSession, e, performance.now() - started);
+  }
+});
+
+function renderResolution(resolution) {
+  const preferences = currentOutputPreferences(resolution);
+  const validation = resolution.validation || {};
+  const retrievalSignals = resolution.retrieval_signals || {};
+  const flags = [];
+  if (validation.gatekeeper_flagged) flags.push("Human review suggested");
+  if (validation.condition_context?.missing_required_context) {
+    flags.push(`Missing context: ${(validation.condition_context.missing_context_fields || []).join(", ")}`);
+  }
+  const sections = [
+    ["issue_classification", "Issue Classification", resolution.issue_classification],
+    ["diagnosis", "Diagnosis", resolution.diagnosis],
+    ["root_cause", "Root Cause", resolution.root_cause],
+    ["resolution_steps", "Resolution Steps", resolution.resolution_steps],
+    ["sources", "Sources", resolution.sources],
+    ["retrieval_diagnostics", "Retrieval Diagnostics", {
+      top_score: retrievalSignals.top_score,
+      score_gap: retrievalSignals.score_gap,
+      selected_sources: retrievalSignals.source_selection || [],
+      support_context_bundles: retrievalSignals.support_context_bundles || [],
+      used_retrieval_cache: retrievalSignals.used_retrieval_cache || false,
+    }],
+    ["confidence", "Confidence", resolution.confidence],
+    ["validation_flags", "Validation Flags", flags.join("; ") || "None"],
+    ["draft_unavailable_reason", "Why Draft Is Unavailable", resolution.draft_unavailable_reason],
+    ["draft_email", "Draft Email", resolution.draft_email],
+  ].filter(([key, , value]) => (key === "retrieval_diagnostics" || outputSectionEnabled(preferences, key)) && value);
+  return sections.map(([, label, value]) => `${escapeHtml(label)}\n${escapeHtml(displayValue(value))}\n`).join("\n")
+    + `\n<details><summary>Raw JSON</summary><pre>${escapeHtml(pretty(resolution))}</pre></details>`;
+}
+
+document.addEventListener("click", (event) => {
+  if (event.target.matches("#refreshDiagnosticsBtn")) {
+    loadDiagnostics();
+  }
+  if (event.target.matches("#testAllDiagnosticsBtn")) {
+    testAllDiagnostics();
+  }
+  if (event.target.matches(".diagnostic-test")) {
+    runDiagnosticCheckById(event.target.dataset.check);
+  }
+  if (event.target.matches("#pauseLogsBtn")) {
+    state.logsPaused = !state.logsPaused;
+    event.target.textContent = state.logsPaused ? "Resume" : "Pause";
+    diagnosticLog("info", state.logsPaused ? "logs.paused" : "logs.resumed", state.logsPaused ? "Live log updates paused." : "Live log updates resumed.");
+  }
+  if (event.target.matches("#copyLogsBtn")) {
+    navigator.clipboard?.writeText($("diagnosticLogs").textContent || "");
+    setStatus("Visible logs copied.");
+  }
+  if (event.target.matches("#clearLogsBtn")) {
+    const level = $("levelFilter")?.value || "";
+    const chat = normalizeText($("chatFilter")?.value || "");
+    const search = normalizeText($("logSearch")?.value || "");
+    state.diagnosticLogs = state.diagnosticLogs.filter(entry => {
+      if (level && entry.level !== level) return true;
+      if (chat && !normalizeText(entry.chatId).includes(chat)) return true;
+      if (search && !normalizeText(`${entry.event} ${entry.message} ${pretty(entry.metadata)}`).includes(search)) return true;
+      return false;
+    });
+    renderDiagnosticLogs();
+  }
+  if (event.target.matches(".view-chat-logs")) {
+    $("chatFilter").value = event.target.dataset.chat;
+    showView("diagnostics");
+    renderDiagnosticLogs();
+  }
+  if (event.target.matches(".copy-all-chunks")) {
+    const session = state.chatSessions.find(item => item.chatId === event.target.dataset.chat);
+    const text = (session?.retrieval?.chunks || []).map(chunk => `${chunk.chunkId}\n${chunk.text}`).join("\n\n---\n\n");
+    navigator.clipboard?.writeText(text);
+    setStatus("Chunks copied.");
+  }
+  if (event.target.matches(".copy-chunk")) {
+    const session = state.chatSessions.find(item => item.chatId === event.target.dataset.chat);
+    const chunk = (session?.retrieval?.chunks || []).find(item => item.chunkId === event.target.dataset.chunk);
+    navigator.clipboard?.writeText(chunk?.text || "");
+    setStatus("Chunk copied.");
+  }
+  if (event.target.matches(".view-trace-diagnostics")) {
+    loadTraceDiagnosticsForSession(event.target.dataset.chat);
+  }
+  if (event.target.matches(".replay-chat")) {
+    replayChatSession(event.target.dataset.chat);
+  }
+  const sourceCard = event.target.closest(".source-card");
+  if (sourceCard && event.target.matches(".preview-source")) {
+    const name = sourceCard.dataset.source;
+    const box = sourceCard.querySelector(".preview-box");
+    const loadBtn = sourceCard.querySelector(".load-source");
+    const downloadBtn = sourceCard.querySelector(".download-preview");
+    box.classList.remove("hidden");
+    box.textContent = "Previewing source...";
+    let mapping = {};
+    try {
+      mapping = JSON.parse(sourceCard.querySelector(".src-mapping").value || "{}");
+    } catch (e) {
+      box.textContent = "Column mapping JSON is invalid.";
+      loadBtn.disabled = true;
+      return;
+    }
+    api("/configurator/source-preview", {
+      method: "POST",
+      body: JSON.stringify({
+        source_key: name,
+        path: sourceCard.querySelector(".src-path").value.trim(),
+        source_type: sourceCard.querySelector(".src-type").value.trim(),
+        column_mapping: mapping,
+        sample_row_limit: 5
+      })
+    }).then(data => {
+      state.sourcePreviews[name] = data.preview;
+      box.innerHTML = renderPreview(data.preview);
+      loadBtn.disabled = !data.preview.can_load;
+      loadBtn.textContent = data.preview.can_load ? "Commit Ingestion Config" : "Load Blocked";
+      downloadBtn.disabled = false;
+    }).catch(e => {
+      box.textContent = e.message;
+      loadBtn.disabled = true;
+      downloadBtn.disabled = true;
+    });
+  }
+  if (sourceCard && event.target.matches(".cancel-preview")) {
+    const name = sourceCard.dataset.source;
+    delete state.sourcePreviews[name];
+    const box = sourceCard.querySelector(".preview-box");
+    box.classList.add("hidden");
+    box.textContent = "";
+    sourceCard.querySelector(".load-source").disabled = true;
+    sourceCard.querySelector(".download-preview").disabled = true;
+    setStatus("Source preview cancelled.");
+  }
+  if (sourceCard && event.target.matches(".download-preview")) {
+    const name = sourceCard.dataset.source;
+    const preview = state.sourcePreviews[name];
+    if (!preview) return;
+    const blob = new Blob([pretty(preview)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${name}-preview-report.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  if (sourceCard && event.target.matches(".load-source")) {
+    const name = sourceCard.dataset.source;
+    const preview = state.sourcePreviews[name];
+    if (!preview?.can_load) return;
+    api("/configurator/config", { method: "POST", body: JSON.stringify(collectConfig()) }).then(data => {
+      state.config = data.config;
+      state.impactLabels = data.impact_labels || state.impactLabels;
+      state.fieldMetadata = data.field_metadata || state.fieldMetadata;
+      loadIntoForm(state.config);
+      renderSetupWizard(data.setup_wizard || state.setupWizard || {});
+      showValidation(data.validation);
+      clearDirty();
+      setStatus("Ingestion config committed. Reload knowledge with python knowledge_loader/kb_loader.py.");
+    }).catch(e => setStatus(e.message));
+  }
+  const ruleCard = event.target.closest(".rule-card[data-rule]");
+  if (ruleCard && event.target.matches("[data-remove]")) {
+    const name = ruleCard.dataset.rule;
+    const keyword = event.target.dataset.remove;
+    const rule = state.chunkRules[name] || {};
+    rule.heading_keywords = (rule.heading_keywords || []).filter(k => k !== keyword);
+    rule.content_keywords = (rule.content_keywords || []).filter(k => k !== keyword);
+    syncAdvancedJson();
+    renderKeywordChips("chunkRulesSimple", state.chunkRules);
+  }
+  if (ruleCard && event.target.matches(".add-keyword")) {
+    const name = ruleCard.dataset.rule;
+    const input = ruleCard.querySelector(".mini-input");
+    const keyword = input.value.trim();
+    if (!keyword) return;
+    const rule = state.chunkRules[name] || { enabled: true, priority: 0, heading_keywords: [], content_keywords: [], negative_keywords: [] };
+    rule.content_keywords = [...new Set([...(rule.content_keywords || []), keyword])];
+    state.chunkRules[name] = rule;
+    input.value = "";
+    syncAdvancedJson();
+    renderKeywordChips("chunkRulesSimple", state.chunkRules);
+  }
+});
+
+document.addEventListener("input", (event) => {
+  if (event.target.closest("#configView")) markDirty(event.target.id || "config");
+  if (event.target.closest("#configView")) renderConfigSnapshot();
+  if (event.target.closest("#diagnosticsView")) renderDiagnosticLogs();
+  const routeCard = event.target.closest(".rule-card[data-route]");
+  if (routeCard) {
+    const route = routeCard.dataset.route;
+    state.routePolicies[route] = {
+      ...(state.routePolicies[route] || {}),
+      preferred_chunk_types: list(routeCard.querySelector(".route-chunks").value),
+      preferred_source_types: list(routeCard.querySelector(".route-sources").value),
+      boost: Number(routeCard.querySelector(".route-boost").value || 0),
+    };
+    syncAdvancedJson();
+  }
+  const authorityRow = event.target.closest(".authority-row");
+  if (authorityRow) {
+    const key = authorityRow.dataset.sourceType;
+    const slider = authorityRow.querySelector(".authority-slider");
+    const number = authorityRow.querySelector(".authority-number");
+    const value = Number(event.target.value || 0);
+    slider.value = value;
+    number.value = value;
+    state.sourceAuthority[key] = value;
+    syncAdvancedJson();
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.closest("#configView")) markDirty(event.target.id || "config");
+  if (event.target.closest("#configView")) renderConfigSnapshot();
+  if (event.target.closest("#diagnosticsView")) renderDiagnosticLogs();
+});
+
+$("chunkRules").addEventListener("change", syncSimpleEditors);
+$("routePolicies").addEventListener("change", syncSimpleEditors);
+$("sourceAuthority").addEventListener("change", syncSimpleEditors);
+$("outputMode").addEventListener("change", updateOutputModeUi);
+$("workflowMode").addEventListener("change", updateWorkflowUi);
+$("apiKey").addEventListener("input", persistApiKey);
+$("ticketProduct").addEventListener("change", () => renderSandboxControls($("ticketProduct").value));
+$("ticketText").addEventListener("change", () => applySandboxTicketContext($("ticketText").value));
+
+normalizeStaticImpactBadges();
+loadConfig()
+  .then(() => showView(viewFromHash(), false))
+  .catch(e => setStatus(e.message));
+</script>
+</body>
+</html>

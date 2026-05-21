@@ -1,0 +1,26 @@
+variant_id: 10_drafting_template_v5_generate_review_refine
+stage: drafting_template
+stage_number: 10
+name: Generate-review-refine
+experiment_mode: offline_replay_only
+changed_lever: one self-check/refine pass
+expected_effect: Reduces unsupported claims
+primary_metric: reviewer_ready_proxy
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  self_refine_passes: 1
+config_hash: bc833b18db39c0a0

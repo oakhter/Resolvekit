@@ -1,0 +1,28 @@
+variant_id: 15_replay_export_v5_full_redacted_bundle
+stage: replay_export
+stage_number: 15
+name: Full redacted bundle
+experiment_mode: offline_replay_only
+changed_lever: trace JSONL + source validation + eval context
+expected_effect: Better debugging
+primary_metric: replay_reproducibility
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  export_size_tracked: true
+  privacy_guardrail: true
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+variant_settings:
+  bundle_profile: full_redacted
+config_hash: 6633a551ba197aee

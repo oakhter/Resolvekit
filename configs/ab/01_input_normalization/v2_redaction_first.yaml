@@ -1,0 +1,25 @@
+variant_id: 01_input_normalization_v2_redaction_first
+stage: input_normalization
+stage_number: 1
+name: Redaction-first
+experiment_mode: offline_replay_only
+changed_lever: redact PII before routing/querying
+expected_effect: Reduces privacy risk without hurting retrieval
+primary_metric: validation_warning_reduction
+guardrails:
+  hard_failures_max: 0
+  red_confidence_must_abstain: true
+  inactive_chunks_must_not_retrieve: true
+  recall_at_3_regression_max_pct: 0
+  recall_at_5_regression_max_pct: 0
+  p95_latency_regression_max_pct: 10
+  cost_regression_max_pct: 15
+  recall_regression_max_pct: 0
+runtime:
+  live_rollout_allowed: false
+  default_candidate: false
+  record_config_hash: true
+  record_prompt_versions: true
+  record_source_index_version: true
+  record_code_commit: true
+config_hash: 50850ad3581b3714

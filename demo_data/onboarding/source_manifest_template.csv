@@ -1,0 +1,2 @@
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+kb-login-001,Login troubleshooting,official_help_article,1.0,true,true,true,2026-01-01,onboarding,2026-12-31,help_article,authentication,login,current,medium,"Replace this row with an approved customer-facing article. Include exact steps support can cite."
