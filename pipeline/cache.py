@@ -152,7 +152,7 @@ def save_feedback(data: dict) -> str:
                 cur.execute(
                     """
                     INSERT INTO feedback (
-                        user_token_hash, cache_key, ticket_preview, confidence,
+                        user_token_hash, user_id, team_id, session_id, cache_key, ticket_preview, confidence,
                         rating, email_was_edited, original_email, edited_email,
                         response_time_ms, from_cache, product, permission_level,
                         access_channel, request_fingerprint, total_tokens,
@@ -165,13 +165,16 @@ def save_feedback(data: dict) -> str:
                         agent_action, final_sent_text, edit_distance_ratio, edit_distance_tokens, citations_kept
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     RETURNING id
                     """,
                     (
                         data["user_token_hash"],
+                        data.get("user_id", ""),
+                        data.get("team_id", ""),
+                        data.get("session_id", ""),
                         data.get("cache_key", ""),
                         (data.get("ticket_preview", "") or "")[:200],
                         data.get("confidence", ""),
@@ -221,6 +224,41 @@ def save_feedback(data: dict) -> str:
     except Exception as e:
         logger.error(f"Feedback write failed: {e}")
         return ""
+
+
+def record_analytics_event(data: dict) -> str:
+    event_id = data.get("id") or f"evt_{uuid.uuid4().hex}"
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_event (
+                        id, event_type, trace_id, draft_run_id, user_id, team_id,
+                        session_id, product, issue_category, source_id, chunk_id, metadata
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    ON CONFLICT (id) DO NOTHING
+                    """,
+                    (
+                        event_id,
+                        data.get("event_type", ""),
+                        data.get("trace_id", ""),
+                        data.get("draft_run_id", ""),
+                        data.get("user_id", ""),
+                        data.get("team_id", ""),
+                        data.get("session_id", ""),
+                        data.get("product", ""),
+                        data.get("issue_category", ""),
+                        data.get("source_id", ""),
+                        data.get("chunk_id", ""),
+                        _json_text(data.get("metadata"), {}),
+                    ),
+                )
+    except Exception as e:
+        logger.error(f"Analytics event write failed: {e}")
+    return event_id
 
 
 def save_draft_run(data: dict) -> str:

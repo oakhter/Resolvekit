@@ -14,7 +14,7 @@ import psycopg2
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from backend.core import config, orchestrator
+from backend.core import analytics, config, orchestrator
 from backend.core import project_config
 from pipeline.cache import (
     create_experiment,
@@ -23,6 +23,7 @@ from pipeline.cache import (
     create_knowledge_patch,
     get_conn,
     get_run_trace,
+    record_analytics_event,
     record_experiment_result,
     save_feedback,
     create_review_queue_item,
@@ -118,6 +119,9 @@ class TicketRequest(BaseModel):
     permission_level: str = ""
     access_channel: str = ""
     request_fingerprint: str = ""
+    user_id: str = ""
+    team_id: str = ""
+    session_id: str = ""
     pinned_source_ids: list[str] = []
     similarity_threshold: str = "none"
     experiment_arm: str = ""
@@ -142,6 +146,9 @@ class FeedbackRequest(BaseModel):
     permission_level: str  = ""
     access_channel:   str  = ""
     request_fingerprint: str = ""
+    user_id: str = ""
+    team_id: str = ""
+    session_id: str = ""
     total_tokens: int = 0
     query_tokens_in: int = 0
     query_tokens_out: int = 0
@@ -258,6 +265,20 @@ class ReplayLookupRequest(BaseModel):
     draft_id: str = ""
     trace_id: str = ""
     replay_mode: str = "current_config"
+
+
+class AnalyticsEventRequest(BaseModel):
+    event_type: str
+    trace_id: str = ""
+    draft_run_id: str = ""
+    product: str = ""
+    issue_category: str = ""
+    source_id: str = ""
+    chunk_id: str = ""
+    user_id: str = ""
+    team_id: str = ""
+    session_id: str = ""
+    metadata: dict = {}
 
 
 FEEDBACK_REASONS = {
@@ -687,6 +708,20 @@ def _suggested_action_for_feedback(reason: str) -> str:
     return mapping.get(reason, "create_knowledge_issue")
 
 
+def _actor_metadata(request: Request, body: BaseModel) -> dict:
+    token_hash = hashlib.sha256(request.headers.get("x-api-key", "").encode()).hexdigest()
+    return {
+        "user_id": (
+            getattr(body, "user_id", "")
+            or request.headers.get("x-resolvekit-user", "")
+            or token_hash[:16]
+        ),
+        "team_id": getattr(body, "team_id", "") or request.headers.get("x-resolvekit-team", ""),
+        "session_id": getattr(body, "session_id", "") or request.headers.get("x-resolvekit-session", ""),
+        "user_token_hash": token_hash,
+    }
+
+
 # ── Health Check ─────────────────────────────────────────────
 @app.get("/health")
 def health():
@@ -864,6 +899,9 @@ def ui_contracts():
             "permission_level": "string",
             "access_channel": "string",
             "request_fingerprint": "string",
+            "user_id": "string",
+            "team_id": "string",
+            "session_id": "string",
             "pinned_source_ids": ["source_id"],
             "similarity_threshold": "none|low|medium|high",
         },
@@ -874,13 +912,13 @@ def ui_contracts():
 
 # ── Main Endpoint ────────────────────────────────────────────
 @app.post("/resolve", response_model=ResolutionResponse, dependencies=[Depends(verify_api_key)])
-async def resolve_ticket(request: TicketRequest):
+async def resolve_ticket(request: Request, body: TicketRequest):
     try:
-        if not request.ticket or not request.ticket.strip():
+        if not body.ticket or not body.ticket.strip():
             raise HTTPException(status_code=400, detail="Ticket text is empty")
-        if request.mode != "suggest":
+        if body.mode != "suggest":
             raise HTTPException(status_code=400, detail="Unsupported mode. This v3.x demo is suggest-only.")
-        if request.support_ops_mode not in {"query", "chat"}:
+        if body.support_ops_mode not in {"query", "chat"}:
             raise HTTPException(status_code=400, detail="Unsupported support_ops_mode")
 
         if not allow_request():
@@ -888,21 +926,25 @@ async def resolve_ticket(request: TicketRequest):
             raise HTTPException(status_code=429, detail="Too many requests — slow down")
 
         logger.info("Incoming request: /resolve")
-        logger.info(f"Ticket length: {len(request.ticket)} chars")
+        logger.info(f"Ticket length: {len(body.ticket)} chars")
+        actor = _actor_metadata(request, body)
 
         resolution = await asyncio.to_thread(
             orchestrator.run,
-            request.ticket,
+            body.ticket,
             {
-                "product": request.product,
-                "mode": request.mode,
-                "support_ops_mode": request.support_ops_mode,
-                "permission_level": request.permission_level,
-                "access_channel": request.access_channel,
-                "request_fingerprint": request.request_fingerprint,
-                "pinned_source_ids": request.pinned_source_ids,
-                "similarity_threshold": request.similarity_threshold,
-                "experiment_arm": request.experiment_arm,
+                "product": body.product,
+                "mode": body.mode,
+                "support_ops_mode": body.support_ops_mode,
+                "permission_level": body.permission_level,
+                "access_channel": body.access_channel,
+                "request_fingerprint": body.request_fingerprint,
+                "user_id": actor["user_id"],
+                "team_id": actor["team_id"],
+                "session_id": actor["session_id"],
+                "pinned_source_ids": body.pinned_source_ids,
+                "similarity_threshold": body.similarity_threshold,
+                "experiment_arm": body.experiment_arm,
             }
         )
 
@@ -913,6 +955,20 @@ async def resolve_ticket(request: TicketRequest):
             resolution["provider"] = get_provider().get_name()
         except Exception:
             resolution["provider"] = "unknown"
+        await asyncio.to_thread(record_analytics_event, {
+            "event_type": "answer_generated",
+            "trace_id": resolution.get("trace_id", ""),
+            "draft_run_id": resolution.get("draft_run_id", ""),
+            "user_id": actor["user_id"],
+            "team_id": actor["team_id"],
+            "session_id": actor["session_id"],
+            "product": body.product,
+            "metadata": {
+                "confidence": resolution.get("confidence", ""),
+                "support_ops_mode": body.support_ops_mode,
+                "total_cost_usd": (resolution.get("usage_summary") or {}).get("total_cost_usd", 0),
+            },
+        })
 
         return {"status": "success", "resolution": resolution}
 
@@ -936,11 +992,13 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
     if body.abstention_correct not in ABSTENTION_VALUES:
         raise HTTPException(status_code=400, detail="Unsupported abstention value")
     try:
-        raw_key    = request.headers.get("x-api-key", "")
-        token_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        actor = _actor_metadata(request, body)
 
         feedback_id = await asyncio.to_thread(save_feedback, {
-            "user_token_hash":    token_hash,
+            "user_token_hash":    actor["user_token_hash"],
+            "user_id":            actor["user_id"],
+            "team_id":            actor["team_id"],
+            "session_id":         actor["session_id"],
             "cache_key":          body.cache_key,
             "ticket_preview":     body.ticket_preview,
             "confidence":         body.confidence,
@@ -1011,8 +1069,23 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
                 "title": f"Feedback: {issue_type.replace('_', ' ')}",
                 "description": (body.comment or body.ticket_preview or "Negative feedback requires review.")[:1000],
                 "suggested_action": _suggested_action_for_feedback(issue_type),
-                "created_by": token_hash[:16],
+                "created_by": actor["user_token_hash"][:16],
             })
+        await asyncio.to_thread(record_analytics_event, {
+            "event_type": "feedback_submitted",
+            "trace_id": body.trace_id,
+            "draft_run_id": body.draft_run_id,
+            "user_id": actor["user_id"],
+            "team_id": actor["team_id"],
+            "session_id": actor["session_id"],
+            "product": body.product,
+            "metadata": {
+                "rating": body.rating,
+                "feedback_reason": body.feedback_reason or reason_code,
+                "agent_action": body.agent_action,
+                "knowledge_issue_id": knowledge_issue_id,
+            },
+        })
 
         logger.info(f"Feedback recorded — rating: {body.rating or 'none'}, edited: {body.email_was_edited}")
         return {"status": "ok", "feedback_id": feedback_id, "knowledge_issue_id": knowledge_issue_id}
@@ -1020,6 +1093,25 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
     except Exception as e:
         logger.error(f"Feedback endpoint error: {e}")
         return {"status": "ok"}   # non-critical — never error the client
+
+
+@app.post("/analytics/events", dependencies=[Depends(verify_api_key)])
+async def submit_analytics_event(body: AnalyticsEventRequest, request: Request):
+    actor = _actor_metadata(request, body)
+    event_id = await asyncio.to_thread(record_analytics_event, {
+        "event_type": body.event_type,
+        "trace_id": body.trace_id,
+        "draft_run_id": body.draft_run_id,
+        "user_id": actor["user_id"],
+        "team_id": actor["team_id"],
+        "session_id": actor["session_id"],
+        "product": body.product,
+        "issue_category": body.issue_category,
+        "source_id": body.source_id,
+        "chunk_id": body.chunk_id,
+        "metadata": body.metadata,
+    })
+    return {"status": "ok", "event_id": event_id}
 
 
 @app.get("/traces/{trace_id}", dependencies=[Depends(verify_admin)])
@@ -1865,6 +1957,146 @@ async def list_review_queue(limit: int = 100):
                     for row in cur.fetchall()
                 ]
     return {"status": "ok", "items": await asyncio.to_thread(_query)}
+
+
+def _analytics_report(days: int) -> dict:
+    days = max(1, min(int(days or 30), 365))
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT trace_id, created_at, product, role, trace
+                FROM run_trace
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                ORDER BY created_at DESC
+                """,
+                (days,),
+            )
+            traces = []
+            for trace_id, created_at, product, role, trace in cur.fetchall():
+                trace = trace if isinstance(trace, dict) else {}
+                request_meta = ((trace.get("planner_output") or {}).get("request_meta") or {})
+                traces.append({
+                    "trace_id": trace_id,
+                    "created_at": str(created_at),
+                    "product": product or request_meta.get("product", ""),
+                    "role": role or request_meta.get("permission_level", ""),
+                    "user_id": request_meta.get("user_id", ""),
+                    "team_id": request_meta.get("team_id", ""),
+                    "session_id": request_meta.get("session_id", ""),
+                    "trace": trace,
+                })
+
+            cur.execute(
+                """
+                SELECT rating, feedback_reason, reason_code, agent_action, product,
+                       user_id, team_id, session_id
+                FROM feedback
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                """,
+                (days,),
+            )
+            feedback = [
+                {
+                    "rating": row[0],
+                    "feedback_reason": row[1],
+                    "reason_code": row[2],
+                    "agent_action": row[3],
+                    "product": row[4],
+                    "user_id": row[5],
+                    "team_id": row[6],
+                    "session_id": row[7],
+                }
+                for row in cur.fetchall()
+            ]
+
+            cur.execute(
+                """
+                SELECT issue_type, severity, status, source_id, document_id, chunk_id
+                FROM knowledge_issue
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                """,
+                (days,),
+            )
+            knowledge_issues = [
+                {
+                    "issue_type": row[0],
+                    "severity": row[1],
+                    "status": row[2],
+                    "source_id": row[3],
+                    "document_id": row[4],
+                    "chunk_id": row[5],
+                }
+                for row in cur.fetchall()
+            ]
+
+            cur.execute(
+                """
+                SELECT needs_escalation, source_issue_type, severity
+                FROM human_review_queue
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                """,
+                (days,),
+            )
+            review_items = [
+                {"needs_escalation": row[0], "source_issue_type": row[1], "severity": row[2]}
+                for row in cur.fetchall()
+            ]
+
+            cur.execute(
+                """
+                SELECT provider, model, step, cost_usd, latency_ms
+                FROM api_calls
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                """,
+                (days,),
+            )
+            api_calls = [
+                {"provider": row[0], "model": row[1], "step": row[2], "cost_usd": row[3], "latency_ms": row[4]}
+                for row in cur.fetchall()
+            ]
+
+            cur.execute(
+                """
+                SELECT event_type
+                FROM analytics_event
+                WHERE created_at >= NOW() - (%s * INTERVAL '1 day')
+                """,
+                (days,),
+            )
+            events = [{"event_type": row[0]} for row in cur.fetchall()]
+
+    return analytics.build_support_intelligence_report(
+        traces=traces,
+        feedback=feedback,
+        knowledge_issues=knowledge_issues,
+        review_items=review_items,
+        api_calls=api_calls,
+        events=events,
+        days=days,
+    )
+
+
+@app.get("/admin/analytics/report", dependencies=[Depends(verify_admin)])
+async def admin_analytics_report(days: int = 30, format: str = "json"):
+    report = await asyncio.to_thread(_analytics_report, days)
+    if format == "markdown":
+        return {
+            "status": "ok",
+            "format": "markdown",
+            "markdown": analytics.render_support_intelligence_markdown(report),
+        }
+    if format != "json":
+        raise HTTPException(status_code=400, detail="Unsupported analytics report format")
+    return {"status": "ok", "report": report}
+
+
+@app.get("/admin/analytics/{section}", dependencies=[Depends(verify_admin)])
+async def admin_analytics_section(section: str, days: int = 30):
+    report = await asyncio.to_thread(_analytics_report, days)
+    if section not in {"usage", "retrieval", "evaluation", "knowledge_gaps", "escalations", "costs"}:
+        raise HTTPException(status_code=404, detail="Unknown analytics section")
+    return {"status": "ok", "section": section, "data": report[section]}
 
 
 # ── Metrics ──────────────────────────────────────────────────

@@ -38,8 +38,9 @@ Latest local verification summary:
 - Runtime baseline: `current_hybrid_rag`; query decomposition is experiment-controlled; graph-style retrieval remains outside alpha defaults.
 - Source formats: CSV, XLSX, and born-digital PDF with manifest metadata. DOCX, OCR, web, raw helpdesk, promoted HTML loaders, and schema inference are deferred.
 - Permissions: Viewer and Admin token split. Admin owns full trace JSON, replay, source controls, exports, eval/A/B runs, config changes, and audit logs.
+- Support intelligence: Admin analytics are grouped into usage, retrieval health, evaluation, knowledge gaps, escalation signals, and costs. Multi-user reporting uses explicit user/team/session fields or headers, with API-token hash fallback.
 - Validation outcomes: `clean`, `clean_with_caveats`, `corrected`, `abstained`, and `hard_failure`.
-- UI layout: Viewer-first support drafting flow with a separate Admin/configurator workflow.
+- UI layout: Viewer-first support drafting flow with Admin analytics, config, replay, source, and audit sections in one admin shell.
 
 ## Documentation Rule
 

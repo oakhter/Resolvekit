@@ -1,8 +1,8 @@
 # ResolveKit
 
-ResolveKit is a self-hosted, source-backed support-resolution framework.
+ResolveKit is a self-hosted, source-backed support-resolution and support-intelligence framework.
 
-It drafts suggested support replies using approved sources, citations, confidence scoring, validation, and traces.
+It drafts suggested support replies using approved sources, citations, confidence scoring, validation, traces, feedback, and admin analytics.
 
 It is suggest-only, not an autonomous support agent. It does not auto-send, auto-resolve, mutate customer accounts, or generate KB articles from raw tickets.
 
@@ -16,6 +16,7 @@ ResolveKit makes the workflow repeatable:
 - controls token use and provider cost per request
 - applies the same source rules, citation rules, and safety checks every time
 - records traces, token usage, latency, cost, validation results, and feedback
+- reports usage, retrieval health, answer quality, costs, escalation signals, and knowledge gaps
 - separates approved knowledge from raw tickets, chats, calls, and emails
 - gives support teams an API and eval loop instead of a manual prompt habit
 
@@ -188,7 +189,21 @@ Metrics surfaces:
 
 - `GET /metrics` returns the last seven days of LLM call count, average latency, estimated cost, and error count.
 - `GET /metrics/daily` returns daily snapshots after `.venv/bin/python scripts/aggregate_metrics_daily.py`.
+- `GET /admin/analytics/report` returns a support-intelligence report covering usage, retrieval, evaluation, knowledge gaps, escalation signals, and costs.
+- `GET /admin/analytics/report?format=markdown` returns the same report as a Markdown summary for ops review.
+- `GET /admin/analytics/{section}` returns one section: `usage`, `retrieval`, `evaluation`, `knowledge_gaps`, `escalations`, or `costs`.
+- `POST /analytics/events` records lightweight events such as source clicks for adoption and workflow analysis.
 - Feedback records reviewer action, edit distance, kept citations, confidence, and review-queue signals.
+
+Multi-user analytics use explicit request identity when supplied:
+
+```text
+x-resolvekit-user: agent-a
+x-resolvekit-team: tier-2
+x-resolvekit-session: session-123
+```
+
+If no user header/body field is provided, ResolveKit falls back to a short hash of the API token. This keeps the alpha simple while still allowing per-user and per-team usage and cost breakdowns in demo or internal deployments.
 
 ## Evaluation Metrics
 

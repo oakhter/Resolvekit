@@ -18,6 +18,7 @@ Viewer / Admin UI
 Main surfaces:
 
 - `backend/api/app.py`: FastAPI API, auth, stable contracts, and admin actions.
+- `backend/core/analytics.py`: support-intelligence report builder for usage, retrieval, evaluation, knowledge gaps, escalation, and cost sections.
 - `pipeline/`: retrieval, reranking, confidence, validation, and response shaping.
 - `pipeline/responder.py`: suggest-only draft construction and response formatting.
 - `backend/core/run_trace.py`: redacted trace construction and storage helpers.
@@ -47,11 +48,14 @@ Main surfaces:
 | `GET` | `/health` | Health check |
 | `POST` | `/resolve` | Generate grounded suggestion |
 | `POST` | `/feedback` | Store reviewer feedback |
+| `POST` | `/analytics/events` | Store lightweight usage events such as source clicks |
 | `GET` | `/draft-runs` | Read-only draft history |
 | `POST` | `/knowledge-issues` | Create reviewer-owned knowledge issue |
 | `GET` | `/traces/{trace_id}` | Fetch redacted RunTrace |
 | `GET` | `/metrics` | Fetch seven-day LLM and quality metrics |
 | `GET` | `/metrics/daily` | Fetch daily metrics snapshots |
+| `GET` | `/admin/analytics/report` | Fetch the full admin support-intelligence report |
+| `GET` | `/admin/analytics/{section}` | Fetch one admin analytics category |
 | `POST` | `/configurator/source-preview` | Preview source parsing before ingestion |
 
 Request model rejects unknown fields. `mode: "suggest"` is the only supported response mode.
@@ -140,6 +144,21 @@ Metrics:
 - p50/p95 latency
 - Cost
 - Hard failures
+
+## Admin Analytics
+
+ResolveKit stores admin analytics from traces, feedback, review queue rows, knowledge issues, API call costs, and explicit `analytics_event` rows. The admin page keeps Analytics, Usage, Retrieval, Evaluation, Costs, Knowledge Gaps, Sources, Replay, Audit, and Config in one shell so admins do not need a separate configurator tab for routine inspection.
+
+Report categories:
+
+- Usage: total queries, active users, active teams, top products, top roles, event counts.
+- Retrieval: no-answer rate, low-confidence rate, average top score, most retrieved sources.
+- Evaluation: helpful rate, negative feedback, review-required count, feedback reasons, agent actions.
+- Knowledge gaps: open issues, missing-source feedback, wrong-source feedback, stale-source feedback.
+- Escalations: review queue volume, escalation count, source issue types.
+- Costs: trace-level cost, API-call cost, average cost per query, API call count, p95 latency.
+
+Multi-user tracking is intentionally lightweight for alpha. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
 
 A/B rules: offline replay only for alpha, same golden cases for control and treatment, one changed lever per variant, negative results retained, and ship/no-ship decisions recorded under `experiments/decisions/`.
 

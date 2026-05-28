@@ -13,13 +13,19 @@
   <aside class="nav">
     <div class="brand">ResolveKit Admin</div>
     <a class="active" href="#overview">Overview</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#usage">Usage</a>
+    <a href="#retrieval">Retrieval</a>
+    <a href="#evaluation">Evaluation</a>
+    <a href="#costs">Costs</a>
+    <a href="#knowledge-gaps">Knowledge Gaps</a>
     <a href="#sources">Sources</a>
     <a href="#conversations">Conversations</a>
     <a href="#replay">Replay Lab</a>
     <a href="#eval">Evaluation</a>
     <a href="#ab">A/B Experiments</a>
     <a href="#exports">Exports</a>
-    <a href="/configurator">Config</a>
+    <a href="#config" onclick="loadConfig()">Config</a>
     <a href="#audit">Audit</a>
   </aside>
   <main class="main">
@@ -34,7 +40,33 @@
       </div>
     </div>
     <section class="grid" id="cards"></section>
+    <section class="card" id="analytics">
+      <div class="label">Analytics Report</div>
+      <button onclick="loadAnalytics()">Load Analytics</button>
+      <button onclick="loadMarkdownReport()">Markdown Report</button>
+      <pre id="analyticsOut">{}</pre>
+    </section>
     <section class="section">
+      <div class="card" id="usage">
+        <div class="label">Usage</div>
+        <pre id="usageOut">{}</pre>
+      </div>
+      <div class="card" id="retrieval">
+        <div class="label">Retrieval</div>
+        <pre id="retrievalOut">{}</pre>
+      </div>
+      <div class="card" id="evaluation">
+        <div class="label">Evaluation</div>
+        <pre id="evaluationOut">{}</pre>
+      </div>
+      <div class="card" id="costs">
+        <div class="label">Costs</div>
+        <pre id="costsOut">{}</pre>
+      </div>
+      <div class="card" id="knowledge-gaps">
+        <div class="label">Knowledge Gaps</div>
+        <pre id="knowledgeGapsOut">{}</pre>
+      </div>
       <div class="card">
         <div class="label">Launch Readiness</div>
         <pre id="readiness">{}</pre>
@@ -54,6 +86,11 @@
         <div class="label">Audit</div>
         <pre id="audit">{}</pre>
       </div>
+      <div class="card" id="config">
+        <div class="label">Config</div>
+        <button onclick="loadConfig()">Load Config</button>
+        <pre id="configOut">{}</pre>
+      </div>
     </section>
   </main>
 </div>
@@ -70,9 +107,25 @@ async function loadAll(){
   $("readiness").textContent=JSON.stringify(await get("/launch-readiness"),null,2);
   $("sources").textContent=JSON.stringify(await get("/sources/status"),null,2);
   $("audit").textContent=JSON.stringify(await get("/audit-log"),null,2);
+  await loadAnalytics();
 }
 async function sourceReport(){ $("sources").textContent=JSON.stringify(await post("/sources/import-preview",{}),null,2) }
 async function replay(){ $("replayOut").textContent=JSON.stringify(await post(`/traces/${$("trace").value.trim()}/replay`,{}),null,2) }
+async function loadAnalytics(){
+  const report=await get("/admin/analytics/report?days=30");
+  $("analyticsOut").textContent=JSON.stringify(report,null,2);
+  const data=report.report||{};
+  $("usageOut").textContent=JSON.stringify(data.usage||{},null,2);
+  $("retrievalOut").textContent=JSON.stringify(data.retrieval||{},null,2);
+  $("evaluationOut").textContent=JSON.stringify(data.evaluation||{},null,2);
+  $("costsOut").textContent=JSON.stringify(data.costs||{},null,2);
+  $("knowledgeGapsOut").textContent=JSON.stringify(data.knowledge_gaps||{},null,2);
+}
+async function loadMarkdownReport(){
+  const report=await get("/admin/analytics/report?days=30&format=markdown");
+  $("analyticsOut").textContent=report.markdown||JSON.stringify(report,null,2);
+}
+async function loadConfig(){ $("configOut").textContent=JSON.stringify(await get("/configurator/config"),null,2) }
 $("token").value=localStorage.getItem("resolvekit_admin_token")||"";
 </script>
 </body>

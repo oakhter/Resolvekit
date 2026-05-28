@@ -17,7 +17,7 @@ import time
 import pytest
 import httpx
 
-from backend.core import project_config
+from backend.core import analytics, project_config
 from pipeline import evidence_table, planner, responder, retriever, validation
 
 TIMEOUT_FAST = 10
@@ -2984,6 +2984,153 @@ def test_draft_run_and_knowledge_issue_schema_exist():
     assert schema.CREATE_KNOWLEDGE_ISSUE_TABLE in schema.OPS_SETUP_QUERIES
 
 
+def test_analytics_schema_tracks_events_and_actor_metadata():
+    assert "CREATE TABLE IF NOT EXISTS analytics_event" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert "event_type" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert "user_id" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert "team_id" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert "session_id" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert "trace_id" in schema.CREATE_ANALYTICS_EVENT_TABLE
+    assert schema.CREATE_ANALYTICS_EVENT_TABLE in schema.OPS_SETUP_QUERIES
+    assert "user_id" in schema.CREATE_FEEDBACK_TABLE
+    assert "team_id" in schema.CREATE_FEEDBACK_TABLE
+    assert "session_id" in schema.CREATE_FEEDBACK_TABLE
+    assert "trace_id" in schema.CREATE_API_CALLS_TABLE
+    assert "user_id" in schema.CREATE_API_CALLS_TABLE
+
+
+def test_support_intelligence_report_groups_usage_eval_cost_and_gaps():
+    report = analytics.build_support_intelligence_report(
+        traces=[
+            {
+                "trace_id": "trace_1",
+                "created_at": "2026-05-29",
+                "user_id": "agent-a",
+                "team_id": "tier-2",
+                "session_id": "sess-1",
+                "product": "billing",
+                "role": "employee",
+                "trace": {
+                    "reranked_results": [{"id": "chunk_1", "source_id": "kb/refunds", "score": 0.82}],
+                    "final_response": {
+                        "confidence": "HIGH",
+                        "validation": {"review_required": False},
+                    },
+                    "token_usage_by_stage": {"cost_usd": 0.012},
+                },
+            },
+            {
+                "trace_id": "trace_2",
+                "created_at": "2026-05-29",
+                "user_id": "agent-b",
+                "team_id": "tier-1",
+                "session_id": "sess-2",
+                "product": "sso",
+                "role": "admin",
+                "trace": {
+                    "reranked_results": [],
+                    "final_response": {
+                        "confidence": "LOW",
+                        "draft_unavailable_reason": "No approved source found.",
+                        "validation": {"review_required": True},
+                    },
+                    "token_usage_by_stage": {"cost_usd": 0.02},
+                },
+            },
+        ],
+        feedback=[
+            {"rating": "thumbs_up", "feedback_reason": "good_answer", "agent_action": "sent_as_is", "product": "billing"},
+            {"rating": "thumbs_down", "feedback_reason": "missing_source", "agent_action": "rejected", "product": "sso"},
+        ],
+        knowledge_issues=[
+            {"issue_type": "missing_source", "severity": "medium", "status": "open", "product": "sso"},
+        ],
+        review_items=[
+            {"needs_escalation": True, "source_issue_type": "missing_source", "severity": "high"},
+        ],
+        api_calls=[
+            {"provider": "openai", "model": "gpt-4.1-mini", "step": "responder", "cost_usd": 0.01, "latency_ms": 900},
+        ],
+        events=[
+            {"event_type": "source_clicked"},
+        ],
+        days=30,
+    )
+
+    assert report["usage"]["total_queries"] == 2
+    assert report["usage"]["active_users"] == 2
+    assert report["retrieval"]["no_answer_count"] == 1
+    assert report["evaluation"]["helpful_rate"] == 0.5
+    assert report["knowledge_gaps"]["open_issue_count"] == 1
+    assert report["escalations"]["needs_escalation_count"] == 1
+    assert report["costs"]["total_cost_usd"] == 0.032
+    assert "ResolveKit Usage & Knowledge Gap Report" in analytics.render_support_intelligence_markdown(report)
+
+
+def test_resolve_endpoint_passes_actor_metadata_to_orchestrator(monkeypatch):
+    captured = {}
+
+    def fake_run(ticket, meta):
+        captured.update(meta)
+        return {"mode": "suggest", "trace_id": "trace_1", "usage_summary": {"total_cost_usd": 0}}
+
+    monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.api.app.allow_request", lambda: True)
+    monkeypatch.setattr("backend.api.app.orchestrator.run", fake_run)
+    monkeypatch.setattr("backend.api.app.record_analytics_event", lambda data: "evt_1")
+
+    response = TestClient(app).post(
+        "/resolve",
+        headers={
+            "x-api-key": "dev-secret",
+            "x-resolvekit-user": "agent-a",
+            "x-resolvekit-team": "tier-2",
+            "x-resolvekit-session": "sess-1",
+        },
+        json={"ticket": "Need refund setup steps.", "product": "billing"},
+    )
+
+    assert response.status_code == 200
+    assert captured["user_id"] == "agent-a"
+    assert captured["team_id"] == "tier-2"
+    assert captured["session_id"] == "sess-1"
+
+
+def test_analytics_event_endpoint_records_source_click(monkeypatch):
+    captured = {}
+
+    def fake_record(data):
+        captured.update(data)
+        return "evt_click"
+
+    monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.api.app.record_analytics_event", fake_record)
+
+    response = TestClient(app).post(
+        "/analytics/events",
+        headers={"x-api-key": "dev-secret", "x-resolvekit-user": "agent-a"},
+        json={
+            "event_type": "source_clicked",
+            "trace_id": "trace_1",
+            "source_id": "kb/refunds",
+            "metadata": {"rank": 1},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["event_id"] == "evt_click"
+    assert captured["event_type"] == "source_clicked"
+    assert captured["user_id"] == "agent-a"
+    assert captured["source_id"] == "kb/refunds"
+
+
+def test_admin_ui_exposes_same_page_analytics_sections():
+    html = (Path(__file__).resolve().parents[1] / "frontend" / "admin" / "index.html").read_text(encoding="utf-8")
+
+    for label in ("Analytics", "Usage", "Retrieval", "Evaluation", "Costs", "Knowledge Gaps", "Config"):
+        assert label in html
+
+
 def test_feedback_endpoint_accepts_agent_action_metrics(monkeypatch):
     saved = {}
 
@@ -3097,7 +3244,7 @@ def test_save_feedback_writes_agent_metrics(monkeypatch):
 
     assert "agent_action" in captured["query"]
     assert "draft_run_id" in captured["query"]
-    assert len(captured["params"]) == 41
+    assert len(captured["params"]) == 44
     assert captured["params"][-8:] == ("draft_run_1", "good_answer", "not_applicable", "edited", "one two changed", 0.3333, 1, "[\"doc:1\"]")
 
 
@@ -3584,10 +3731,10 @@ def test_daily_metrics_endpoint_reads_snapshot(monkeypatch):
     fake_conn.cursor.return_value.__enter__.return_value = fake_cursor
     fake_conn.__enter__.return_value = fake_conn
 
-    monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.get_conn", lambda: fake_conn)
 
-    response = TestClient(app).get("/metrics/daily", headers={"x-api-key": "dev-secret"})
+    response = TestClient(app).get("/metrics/daily", headers={"x-api-key": "admin-secret"})
 
     assert response.status_code == 200
     metric = response.json()["metrics"][0]

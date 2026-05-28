@@ -159,6 +159,9 @@ CREATE TABLE IF NOT EXISTS feedback (
     reason_code          TEXT        DEFAULT '',
     abstention_correct   TEXT        DEFAULT 'not_applicable',
     user_token_hash      TEXT        NOT NULL,
+    user_id              TEXT        DEFAULT '',
+    team_id              TEXT        DEFAULT '',
+    session_id           TEXT        DEFAULT '',
     cache_key            TEXT,
     ticket_preview       TEXT,
     confidence           TEXT,
@@ -365,6 +368,11 @@ CREATE TABLE IF NOT EXISTS api_calls (
     endpoint      TEXT            NOT NULL,
     provider      TEXT            DEFAULT '',
     step          TEXT            DEFAULT '',
+    trace_id      TEXT            DEFAULT '',
+    draft_run_id  TEXT            DEFAULT '',
+    user_id       TEXT            DEFAULT '',
+    team_id       TEXT            DEFAULT '',
+    session_id    TEXT            DEFAULT '',
     tokens_in     INTEGER         DEFAULT 0,
     tokens_out    INTEGER         DEFAULT 0,
     latency_ms    INTEGER         DEFAULT 0,
@@ -372,6 +380,24 @@ CREATE TABLE IF NOT EXISTS api_calls (
     error         BOOLEAN         DEFAULT FALSE,
     error_message TEXT            DEFAULT '',
     created_at    TIMESTAMP       DEFAULT NOW()
+);
+"""
+
+CREATE_ANALYTICS_EVENT_TABLE = """
+CREATE TABLE IF NOT EXISTS analytics_event (
+    id            TEXT      PRIMARY KEY,
+    event_type    TEXT      NOT NULL,
+    trace_id      TEXT      DEFAULT '',
+    draft_run_id  TEXT      DEFAULT '',
+    user_id       TEXT      DEFAULT '',
+    team_id       TEXT      DEFAULT '',
+    session_id    TEXT      DEFAULT '',
+    product       TEXT      DEFAULT '',
+    issue_category TEXT     DEFAULT '',
+    source_id     TEXT      DEFAULT '',
+    chunk_id      TEXT      DEFAULT '',
+    metadata      JSONB     DEFAULT '{}'::jsonb,
+    created_at    TIMESTAMP DEFAULT NOW()
 );
 """
 
@@ -440,6 +466,9 @@ CREATE TABLE IF NOT EXISTS run_trace (
 # These are safe to run repeatedly (IF NOT EXISTS).
 
 ALTER_FEEDBACK_ADD_PRODUCT = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS product TEXT;"
+ALTER_FEEDBACK_ADD_USER_ID = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT '';"
+ALTER_FEEDBACK_ADD_TEAM_ID = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS team_id TEXT DEFAULT '';"
+ALTER_FEEDBACK_ADD_SESSION_ID = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT '';"
 ALTER_FEEDBACK_ADD_DRAFT_RUN_ID = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS draft_run_id TEXT DEFAULT '';"
 ALTER_FEEDBACK_ADD_REASON_CODE = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS reason_code TEXT DEFAULT '';"
 ALTER_FEEDBACK_ADD_ABSTENTION_CORRECT = "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS abstention_correct TEXT DEFAULT 'not_applicable';"
@@ -481,6 +510,11 @@ ALTER_FEEDBACK_ADD_CITATIONS_KEPT = "ALTER TABLE feedback ADD COLUMN IF NOT EXIS
 ALTER_API_CALLS_ADD_PROVIDER = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT '';"
 ALTER_API_CALLS_ADD_STEP = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS step TEXT DEFAULT '';"
 ALTER_API_CALLS_ADD_ERROR_MESSAGE = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS error_message TEXT DEFAULT '';"
+ALTER_API_CALLS_ADD_TRACE_ID = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS trace_id TEXT DEFAULT '';"
+ALTER_API_CALLS_ADD_DRAFT_RUN_ID = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS draft_run_id TEXT DEFAULT '';"
+ALTER_API_CALLS_ADD_USER_ID = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT '';"
+ALTER_API_CALLS_ADD_TEAM_ID = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS team_id TEXT DEFAULT '';"
+ALTER_API_CALLS_ADD_SESSION_ID = "ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT '';"
 
 ALTER_EVAL_ADD_RETRY_TRIGGERED = "ALTER TABLE evaluation_results ADD COLUMN IF NOT EXISTS retry_triggered BOOLEAN DEFAULT FALSE;"
 ALTER_EVAL_ADD_PRODUCT = "ALTER TABLE evaluation_results ADD COLUMN IF NOT EXISTS product TEXT DEFAULT '';"
@@ -975,6 +1009,7 @@ OPS_SETUP_QUERIES = [
     CREATE_EXPERIMENT_ARM_TABLE,
     CREATE_EXPERIMENT_RESULT_TABLE,
     CREATE_API_CALLS_TABLE,
+    CREATE_ANALYTICS_EVENT_TABLE,
     CREATE_EVALUATION_RESULTS,
     CREATE_HUMAN_REVIEW_QUEUE,
     CREATE_RUN_TRACE_TABLE,
@@ -991,6 +1026,9 @@ OPS_SETUP_QUERIES = [
     ALTER_DRAFT_RUN_ADD_ASSIGNED_AT,
     ALTER_DRAFT_RUN_ADD_ASSIGNMENT_REASON,
     ALTER_FEEDBACK_ADD_PRODUCT,
+    ALTER_FEEDBACK_ADD_USER_ID,
+    ALTER_FEEDBACK_ADD_TEAM_ID,
+    ALTER_FEEDBACK_ADD_SESSION_ID,
     ALTER_FEEDBACK_ADD_PERMISSION_LEVEL,
     ALTER_FEEDBACK_ADD_ACCESS_CHANNEL,
     ALTER_FEEDBACK_ADD_REQUEST_FINGERPRINT,
@@ -1021,6 +1059,11 @@ OPS_SETUP_QUERIES = [
     ALTER_API_CALLS_ADD_PROVIDER,
     ALTER_API_CALLS_ADD_STEP,
     ALTER_API_CALLS_ADD_ERROR_MESSAGE,
+    ALTER_API_CALLS_ADD_TRACE_ID,
+    ALTER_API_CALLS_ADD_DRAFT_RUN_ID,
+    ALTER_API_CALLS_ADD_USER_ID,
+    ALTER_API_CALLS_ADD_TEAM_ID,
+    ALTER_API_CALLS_ADD_SESSION_ID,
     ALTER_EVAL_ADD_RETRY_TRIGGERED,
     ALTER_EVAL_ADD_PRODUCT,
     ALTER_EVAL_ADD_ACCESS_CHANNEL,
