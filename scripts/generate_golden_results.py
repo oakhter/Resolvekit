@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -29,6 +30,38 @@ def _citation_source_ids(resolution: dict[str, Any]) -> list[str]:
     return sorted(set(source_ids))
 
 
+def _customer_facing_citation_source_ids(resolution: dict[str, Any]) -> list[str]:
+    if resolution.get("draft_unavailable_reason"):
+        return []
+    validation = resolution.get("validation") or {}
+    explicit = validation.get("customer_facing_citations") or []
+    if explicit:
+        source_ids = [
+            str(citation.get("source_id") or "")
+            for citation in explicit
+            if citation.get("source_id")
+        ]
+        return sorted(set(source_ids))
+
+    citations_by_label = {
+        str(citation.get("citation_id") or ""): str(citation.get("source_id") or "")
+        for citation in (validation.get("citations") or [])
+        if citation.get("citation_id") and citation.get("source_id")
+    }
+    answer_text = "\n".join(str(resolution.get(key) or "") for key in (
+        "root_cause",
+        "resolution_steps",
+        "draft_email",
+        "rendered_reply",
+    ))
+    used_labels = sorted(set(re.findall(r"\[?(KB-\d+)\]?", answer_text)))
+    return sorted(set(
+        citations_by_label[label]
+        for label in used_labels
+        if citations_by_label.get(label)
+    ))
+
+
 def _retrieved_source_ids(resolution: dict[str, Any], fallback: list[str]) -> list[str]:
     signals = resolution.get("retrieval_signals") or {}
     bundles = signals.get("support_context_bundles") or []
@@ -37,7 +70,32 @@ def _retrieved_source_ids(resolution: dict[str, Any], fallback: list[str]) -> li
         source_id = bundle.get("source_id")
         if source_id:
             source_ids.append(str(source_id))
-    return source_ids or fallback
+    return list(dict.fromkeys(source_ids or fallback))
+
+
+_REVIEW_ONLY_UNSUPPORTED_PREFIXES = (
+    "Response produced a customer draft despite red confidence.",
+    "Response answered directly despite red confidence.",
+    "Missing context was not acknowledged:",
+    "Source conflicts were not surfaced in the response.",
+)
+
+
+def _unsupported_factual_claims(claims: list[Any], answer_text: str = "", abstained: bool = False) -> list[str]:
+    factual = []
+    has_answer_citation = bool(re.search(r"\[KB-\d+\]", answer_text or ""))
+    for claim in claims:
+        text = str(claim or "").strip()
+        if not text:
+            continue
+        if abstained and text == "Factual answer fields did not cite approved evidence.":
+            continue
+        if any(text.startswith(prefix) for prefix in _REVIEW_ONLY_UNSUPPORTED_PREFIXES):
+            continue
+        if text == "Factual answer fields did not cite approved evidence." and has_answer_citation:
+            continue
+        factual.append(text)
+    return factual
 
 
 def _cost_usd(resolution: dict[str, Any]) -> float:
@@ -59,9 +117,10 @@ def _answer_text(resolution: dict[str, Any]) -> str:
         resolution.get("root_cause"),
         resolution.get("resolution_steps"),
         resolution.get("draft_email"),
-        resolution.get("raw"),
         resolution.get("draft_unavailable_reason"),
     ]
+    if not resolution.get("draft_unavailable_reason"):
+        parts.append(resolution.get("raw"))
     return "\n\n".join(str(part).strip() for part in parts if str(part or "").strip())
 
 
@@ -85,9 +144,13 @@ def _result_from_resolution(case: dict[str, Any], resolution: dict[str, Any], la
     validation = resolution.get("validation") or {}
     scorer = resolution.get("confidence_scorer") or {}
     eval_score = resolution.get("eval_score") or {}
-    citations = _citation_source_ids(resolution)
-    retrieved_source_ids = _retrieved_source_ids(resolution, citations)
+    evidence_citations = _citation_source_ids(resolution)
+    customer_citations = _customer_facing_citation_source_ids(resolution)
+    retrieved_source_ids = _retrieved_source_ids(resolution, evidence_citations)
     unsupported_claims = validation.get("unsupported_claims") or []
+    answer_text = _answer_text(resolution)
+    abstained = bool(resolution.get("draft_unavailable_reason")) or scorer.get("confidence_band") == "red"
+    factual_unsupported_claims = _unsupported_factual_claims(unsupported_claims, answer_text, abstained)
     blocked = validation.get("blocked_citations") or []
     raw_blocked = [
         item for item in blocked
@@ -98,15 +161,19 @@ def _result_from_resolution(case: dict[str, Any], resolution: dict[str, Any], la
         "ticket_id": case["ticket_id"],
         "route": (validation.get("strategist") or {}).get("route") or scorer.get("route") or "",
         "confidence_band": scorer.get("confidence_band", ""),
-        "abstained": bool(resolution.get("draft_unavailable_reason")) or scorer.get("confidence_band") == "red",
+        "abstained": abstained,
         "fallback_reason": resolution.get("draft_unavailable_reason", ""),
         "validation_passed": validation.get("passed"),
-        "cited_source_ids": citations,
+        "cited_source_ids": customer_citations,
+        "customer_facing_cited_source_ids": customer_citations,
+        "evidence_context_source_ids": evidence_citations,
         "retrieved_source_ids": retrieved_source_ids,
-        "answer_text": _answer_text(resolution),
+        "answer_text": answer_text,
         "customer_facing_unapproved_citation_count": len(blocked),
         "raw_historical_ticket_citation_count": len(raw_blocked),
-        "unsupported_factual_claim_count": len(unsupported_claims),
+        "unsupported_factual_claim_count": len(factual_unsupported_claims),
+        "validation_review_finding_count": max(0, len(unsupported_claims) - len(factual_unsupported_claims)),
+        "unsupported_claims": factual_unsupported_claims,
         "latency_ms": latency_ms,
         "tokens_in": token_usage["tokens_in"],
         "tokens_out": token_usage["tokens_out"],
@@ -114,7 +181,7 @@ def _result_from_resolution(case: dict[str, Any], resolution: dict[str, Any], la
         "cost_usd": _cost_usd(resolution),
         "llm_calls_used": int((resolution.get("llm_workflow") or {}).get("llm_calls_used", 0) or 0),
         "faithfulness_score": 1.0 if eval_score.get("faithfulness") == "HIGH" else None,
-        "context_relevance_score": 1.0 if citations else 0.0,
+        "context_relevance_score": 1.0 if retrieved_source_ids else 0.0,
         "answer_relevance_score": 1.0 if validation.get("passed") is True else None,
         "trace_id": resolution.get("trace_id", ""),
     }

@@ -1,5 +1,6 @@
 import re
 import json
+from copy import deepcopy
 from backend.providers import get_provider
 from backend.core.logger import get_logger
 from pipeline.cache import get_cached_response, save_cached_response, hash_key
@@ -17,6 +18,7 @@ You will receive a support ticket and structured KB context. Work through diagno
 EVIDENCE RULES — you MUST follow these:
 - Base ALL reasoning ONLY on the provided KB chunks
 - Every cause you state must cite which [KB-N] chunk supports it
+- Every factual or actionable resolution step must cite the supporting [KB-N] chunk
 - If the KB does not cover the issue, say so explicitly and set Confidence to LOW
 - Do NOT invent steps not implied by the KB
 
@@ -68,7 +70,7 @@ Root Cause:
 <2–3 sentences. State the most likely cause from Diagnosis. Cite the supporting chunk(s). If KB coverage is partial, say so.>
 
 Resolution Steps:
-<Numbered list. Specific and actionable. Address top hypothesis first. Add info-gathering steps if key data is missing. Flag escalation explicitly if needed.>
+<Numbered list. Specific and actionable. Each factual or actionable step must cite [KB-N]. Address top hypothesis first. Add info-gathering steps if key data is missing. Flag escalation explicitly if needed.>
 
 Sources:
 <Comma-separated KB source filenames cited, or "General technical knowledge" if KB was insufficient>
@@ -317,6 +319,16 @@ def apply_output_preferences(resolution: dict) -> dict:
     return resolution
 
 
+def attach_canonical_resolution(resolution: dict) -> dict:
+    canonical = deepcopy({
+        key: value
+        for key, value in resolution.items()
+        if key not in {"canonical_resolution", "output_preferences"}
+    })
+    resolution["canonical_resolution"] = canonical
+    return resolution
+
+
 # ── MAIN ────────────────────────────────────────────────────
 
 def run(context: dict) -> dict:
@@ -435,6 +447,7 @@ def run(context: dict) -> dict:
             resolution["structured_reply"] = structured_reply
             resolution["rendered_reply"] = render_structured_reply(structured_reply)
 
+        resolution = attach_canonical_resolution(resolution)
         resolution = apply_output_preferences(resolution)
         save_cached_response(cache_key, resolution, provider=provider.get_name())
 

@@ -1,5 +1,6 @@
 import time
 import json
+import re
 from pipeline import ingestor, query_builder, retriever, reranker, responder
 from pipeline import planner, evaluator, scorer
 from pipeline import validation
@@ -65,6 +66,23 @@ def _abstention_response(reason: str, scorer_result: dict | None = None, context
     })
 
 
+def _replace_with_abstention(resolution: dict, abstention: dict) -> dict:
+    preserved = {
+        key: resolution[key]
+        for key in ("cache_key", "from_cache", "usage")
+        if key in resolution
+    }
+    resolution.clear()
+    resolution.update(abstention)
+    resolution.update(preserved)
+    resolution["canonical_resolution"] = {
+        key: value
+        for key, value in abstention.items()
+        if key not in {"canonical_resolution", "raw", "rendered_reply", "structured_reply"}
+    }
+    return resolution
+
+
 def safe_run(step_name, func, context):
     try:
         logger.info(f"Step — {step_name}")
@@ -110,6 +128,78 @@ def _collect_retrieval_signals(context: dict) -> dict:
         "used_retrieval_cache": bool(context.get("retrieval_cache_hit", False)),
         "used_response_cache": False,  # updated after responder
     }
+
+
+def _select_direct_evidence_chunks(chunks: list[dict], context: dict, max_chunks: int = 3) -> list[dict]:
+    """Keep direct, source-diverse evidence for customer-facing drafting."""
+    if not chunks:
+        return []
+    route = str(context.get("routing_strategy") or "").strip().lower()
+    route_priority = {
+        "policy": ["policy", "official_help_article", "knowledge_base", "release_note", "known_issue"],
+        "billing": ["policy", "official_help_article", "knowledge_base"],
+        "access": ["official_help_article", "knowledge_base", "policy"],
+        "bug": ["known_issue", "official_help_article", "knowledge_base", "release_note"],
+        "release_change": ["release_note", "known_issue", "official_help_article", "knowledge_base"],
+        "how_to": ["official_help_article", "knowledge_base", "faq", "policy"],
+        "general": ["official_help_article", "knowledge_base", "policy", "faq"],
+    }.get(route, [])
+    priority_index = {source_type: index for index, source_type in enumerate(route_priority)}
+    stop_words = {
+        "cannot", "find", "need", "needs", "help", "issue", "request", "customer",
+        "please", "after", "before", "with", "from", "that", "this", "workspace",
+        "mobile", "website", "agent", "admin", "conversation", "conversations",
+    }
+
+    def terms(text: str) -> set[str]:
+        values = set()
+        for raw in re.findall(r"[a-z0-9]+", text.lower().replace("_", " ")):
+            if len(raw) < 4 or raw in stop_words:
+                continue
+            values.add(raw[:-1] if raw.endswith("s") and len(raw) > 4 else raw)
+        return values
+
+    ticket_text = str((context.get("ticket") or {}).get("cleaned") or "")
+    ticket_terms = terms(ticket_text)
+
+    def label_overlap(chunk: dict) -> int:
+        label_text = " ".join(str(chunk.get(key) or "") for key in (
+            "source_id",
+            "source_file",
+            "title",
+            "heading_path",
+        ))
+        return len(ticket_terms & terms(label_text))
+
+    overlap_available = bool(ticket_terms and any(label_overlap(chunk) > 0 for chunk in chunks))
+    ordered_chunks = sorted(
+        chunks,
+        key=lambda chunk: (
+            (
+                priority_index.get(str(chunk.get("source_type") or chunk.get("doc_type") or ""), len(priority_index))
+                if not ticket_terms or label_overlap(chunk) > 0
+                else len(priority_index)
+            ),
+            -label_overlap(chunk),
+            -float(chunk.get("rerank_score") or chunk.get("policy_score") or chunk.get("rrf_score") or 0.0),
+        ),
+    )
+    selected = []
+    seen_sources = set()
+    for chunk in ordered_chunks:
+        if overlap_available and label_overlap(chunk) == 0:
+            continue
+        source_key = str(chunk.get("source_id") or chunk.get("source_file") or chunk.get("id") or "")
+        reason = str(chunk.get("retrieval_reason") or "")
+        if source_key in seen_sources and any(marker in reason for marker in ("sibling", "neighbor", "parent_section")):
+            continue
+        if source_key in seen_sources:
+            continue
+        selected.append(chunk)
+        seen_sources.add(source_key)
+        if len(selected) >= max_chunks:
+            break
+    return selected or chunks[:max_chunks]
 
 
 def _save_human_review(resolution: dict, routing_strategy: str, eval_score: dict, full_ticket: str = "") -> None:
@@ -402,6 +492,7 @@ def run(ticket_raw: str, request_meta: dict | None = None) -> dict:
     # ── Dynamic top-k: trim to 3 when signals are strong and clear ──
     top_chunks = context.get("top_chunks", [])
     top_chunks = _apply_support_ops_retrieval_controls(top_chunks, context)
+    top_chunks = _select_direct_evidence_chunks(top_chunks, context)
     context["top_chunks"] = top_chunks
     if len(top_chunks) > 3:
         scores = [c.get("rerank_score", 0.0) for c in top_chunks]
@@ -478,11 +569,14 @@ def run(ticket_raw: str, request_meta: dict | None = None) -> dict:
     )
     resolution["confidence_scorer"] = scorer_result.to_dict()
     if scorer_result.confidence_band == "red":
-        resolution.update(_abstention_response(
-            scorer_result.abstention_reason,
-            scorer_result.to_dict(),
-            context,
-        ))
+        _replace_with_abstention(
+            resolution,
+            _abstention_response(
+                scorer_result.abstention_reason,
+                scorer_result.to_dict(),
+                context,
+            ),
+        )
         context["resolution"] = resolution
 
     # ── Step 7 — Evaluator (LLM call 2, fresh runs only) ────

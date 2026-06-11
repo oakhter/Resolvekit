@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,14 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCHEMA = ROOT / "eval" / "golden_set" / "schema.json"
 DEFAULT_GOLDEN_SET = ROOT / "eval" / "golden_set" / "v3_1_starter.jsonl"
 DEFAULT_ALIASES = ROOT / "eval" / "golden_set" / "source_aliases.json"
+RELEASE_PROFILES = {"public_alpha", "production"}
+PRODUCTION_GATE_TARGETS = {
+    "max_validation_failure_count": 4,
+    "min_retrieval_recall_at_3": 0.75,
+    "min_retrieval_recall_at_5": 0.75,
+    "min_source_precision": 0.60,
+    "min_required_point_coverage": 0.50,
+}
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -105,7 +114,12 @@ def evaluate_stored_results(rows: list[dict[str, Any]], result_rows: list[dict[s
             continue
         evaluated += 1
 
-        cited_source_ids = set(result.get("cited_source_ids") or [])
+        customer_cited = result.get("customer_facing_cited_source_ids")
+        if bool(result.get("abstained", False)) or result.get("fallback_reason"):
+            cited_source_ids = set()
+        else:
+            cited_source_ids = set(customer_cited if customer_cited is not None else (result.get("cited_source_ids") or []))
+        legacy_cited_source_ids = set(result.get("cited_source_ids") or [])
         forbidden = set(expected.get("forbidden_source_ids") or [])
         if cited_source_ids & forbidden:
             hard_failures.append(f"{ticket_id}: cited forbidden source(s): {', '.join(sorted(cited_source_ids & forbidden))}")
@@ -113,7 +127,7 @@ def evaluate_stored_results(rows: list[dict[str, Any]], result_rows: list[dict[s
             hard_failures.append(f"{ticket_id}: customer-facing unapproved citation")
         if result.get("raw_historical_ticket_citation_count", 0):
             hard_failures.append(f"{ticket_id}: raw historical ticket citation")
-        if result.get("unsupported_factual_claim_count", 0):
+        if _unsupported_factual_claim_count(result):
             hard_failures.append(f"{ticket_id}: unsupported factual claim")
         answer_text = str(result.get("answer_text") or "").strip()
         if result.get("confidence_band") == "red" and answer_text and not bool(result.get("abstained", False)):
@@ -151,6 +165,8 @@ def evaluate_stored_results(rows: list[dict[str, Any]], result_rows: list[dict[s
                 if disallowed_sources:
                     hard_failures.append(f"{ticket_id}: cited unallowed source(s): {', '.join(sorted(disallowed_sources))}")
                 citation_precision_values.append(len(cited_source_ids & allowed_sources) / len(cited_source_ids))
+        elif legacy_cited_source_ids and customer_cited is not None:
+            citation_precision_values.append(1.0)
         if retrieved_sources:
             allowed_sources = expected_sources | (set(result.get("allowed_extra_source_ids") or []))
             if allowed_sources:
@@ -257,11 +273,14 @@ def compare_to_baseline(report: dict[str, Any], baseline: dict[str, Any]) -> dic
 def release_gate_report(
     report: dict[str, Any],
     *,
+    release_profile: str = "public_alpha",
     baseline_diff: dict[str, Any] | None = None,
     max_avg_latency_ms: float | None = None,
     max_total_cost_usd: float | None = None,
     fail_on_baseline_regression: bool = False,
 ) -> dict[str, Any]:
+    if release_profile not in RELEASE_PROFILES:
+        raise ValueError(f"unknown release profile: {release_profile}")
     blockers = []
     warnings = []
     if not report.get("schema_valid", False):
@@ -278,6 +297,37 @@ def release_gate_report(
     if max_total_cost_usd is not None and report.get("total_cost_usd") is not None:
         if float(report["total_cost_usd"]) > float(max_total_cost_usd):
             blockers.append(f"total cost ${report['total_cost_usd']} exceeds budget ${max_total_cost_usd}")
+    if release_profile == "production":
+        validation_failures = int(report.get("validation_failure_count", 0) or 0)
+        max_validation_failures = int(PRODUCTION_GATE_TARGETS["max_validation_failure_count"])
+        if validation_failures > max_validation_failures:
+            blockers.append(
+                f"validation/review failures {validation_failures} exceeds production target {max_validation_failures}"
+            )
+        _block_if_below(
+            blockers,
+            "retrieval_recall_at_3",
+            report.get("retrieval_recall_at_3"),
+            float(PRODUCTION_GATE_TARGETS["min_retrieval_recall_at_3"]),
+        )
+        _block_if_below(
+            blockers,
+            "retrieval_recall_at_5",
+            report.get("retrieval_recall_at_5"),
+            float(PRODUCTION_GATE_TARGETS["min_retrieval_recall_at_5"]),
+        )
+        _block_if_below(
+            blockers,
+            "source_precision",
+            report.get("source_precision"),
+            float(PRODUCTION_GATE_TARGETS["min_source_precision"]),
+        )
+        _block_if_below(
+            blockers,
+            "required_point_coverage",
+            report.get("required_point_coverage"),
+            float(PRODUCTION_GATE_TARGETS["min_required_point_coverage"]),
+        )
     if fail_on_baseline_regression:
         for metric, values in (baseline_diff or {}).items():
             delta = float(values.get("delta", 0) or 0)
@@ -289,6 +339,7 @@ def release_gate_report(
         warnings.append("baseline diff reported; regression blocking disabled")
     return {
         "passed": not blockers,
+        "profile": release_profile,
         "blockers": blockers,
         "warnings": warnings,
         "budgets": {
@@ -296,6 +347,14 @@ def release_gate_report(
             "max_total_cost_usd": max_total_cost_usd,
         },
     }
+
+
+def _block_if_below(blockers: list[str], metric: str, value: Any, minimum: float) -> None:
+    if value is None:
+        blockers.append(f"{metric} missing; production target is {minimum}")
+        return
+    if float(value) < minimum:
+        blockers.append(f"{metric} {value} below production target {minimum}")
 
 
 def human_readable_report(report: dict[str, Any]) -> str:
@@ -350,7 +409,7 @@ def human_readable_report(report: dict[str, Any]) -> str:
         lines.extend(f"- {failure}" for failure in report["hard_failures"])
     gate = report.get("release_gate") or {}
     if gate:
-        lines.extend(["", "## Release Gate", f"- Passed: {gate.get('passed')}"])
+        lines.extend(["", "## Release Gate", f"- Profile: {gate.get('profile', 'public_alpha')}", f"- Passed: {gate.get('passed')}"])
         if gate.get("blockers"):
             lines.extend(f"- Blocker: {item}" for item in gate["blockers"])
         if gate.get("warnings"):
@@ -431,6 +490,23 @@ def _point_coverage(answer_text: str, required_points: list[str]) -> float:
     return hits / len(required_points) if required_points else 0.0
 
 
+def _unsupported_factual_claim_count(result: dict) -> int:
+    if bool(result.get("abstained", False)) or result.get("fallback_reason"):
+        return 0
+    claims = result.get("unsupported_claims")
+    if isinstance(claims, list):
+        answer_text = str(result.get("answer_text") or "")
+        has_answer_citation = bool(re.search(r"\[KB-\d+\]", answer_text))
+        count = 0
+        for claim in claims:
+            text = str(claim or "").strip()
+            if text == "Factual answer fields did not cite approved evidence." and has_answer_citation:
+                continue
+            count += 1
+        return count
+    return int(result.get("unsupported_factual_claim_count", 0) or 0)
+
+
 def _forbidden_point_violations(answer_text: str, forbidden_points: list[str]) -> int:
     normalized_answer = _normalize_text(answer_text)
     return sum(1 for point in forbidden_points if _normalize_text(point) in normalized_answer)
@@ -448,6 +524,7 @@ def main() -> int:
     parser.add_argument("--max-avg-latency-ms", type=float, default=None)
     parser.add_argument("--max-total-cost-usd", type=float, default=None)
     parser.add_argument("--release-gate", action="store_true")
+    parser.add_argument("--release-profile", choices=sorted(RELEASE_PROFILES), default="public_alpha")
     args = parser.parse_args()
 
     schema = _load_schema(args.schema)
@@ -492,6 +569,7 @@ def main() -> int:
     if args.release_gate or args.fail_on_baseline_regression or args.max_avg_latency_ms is not None or args.max_total_cost_usd is not None:
         report["release_gate"] = release_gate_report(
             report,
+            release_profile=args.release_profile,
             baseline_diff=report.get("baseline_diff"),
             max_avg_latency_ms=args.max_avg_latency_ms,
             max_total_cost_usd=args.max_total_cost_usd,

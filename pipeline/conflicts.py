@@ -38,6 +38,22 @@ def _status(chunk: dict[str, Any]) -> str:
     return str(chunk.get("status") or chunk.get("known_issue_status") or "").strip().lower()
 
 
+def _decision(chunk: dict[str, Any]) -> str:
+    return str(
+        chunk.get("decision")
+        or chunk.get("policy_decision")
+        or chunk.get("availability")
+        or chunk.get("resolution_state")
+        or ""
+    ).strip().lower()
+
+
+def _explicit_policy_kb_disagreement(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    left_value = _status(left) or _decision(left)
+    right_value = _status(right) or _decision(right)
+    return bool(left_value and right_value and left_value != right_value)
+
+
 def _versions(chunk: dict[str, Any]) -> set[str]:
     text = " ".join(
         str(chunk.get(key) or "")
@@ -64,7 +80,11 @@ def detect_source_conflicts(chunks: list[dict[str, Any]]) -> list[SourceConflict
             right_label = _source_label(right)
             pair = {left_type, right_type}
 
-            if pair & {"policy"} and pair & {"faq", "knowledge_base", "official_help_article"}:
+            if (
+                pair & {"policy"}
+                and pair & {"faq", "knowledge_base", "official_help_article"}
+                and _explicit_policy_kb_disagreement(left, right)
+            ):
                 conflicts.append(SourceConflict(
                     conflict_type="policy_vs_faq",
                     source_a=left_label,

@@ -40,7 +40,7 @@ if [ -z "$CONFIGURATOR_API_KEY_VALUE" ] || [ "$CONFIGURATOR_API_KEY_VALUE" = "ch
   exit 1
 fi
 
-docker compose up -d --build
+docker compose up -d --build db app
 docker compose exec -T db pg_isready -U resolvekit -d resolvekit
 docker compose exec -T app python scripts/setup_db.py
 printf "all\n" | docker compose exec -T app python knowledge_loader/kb_loader.py
@@ -74,8 +74,8 @@ print(trace_id)
 PY
 )"
 
-curl -fsS -H "x-api-key: $API_KEY_VALUE" "$BASE_URL/traces/$TRACE_ID" >/tmp/resolvekit_trace.json
-curl -fsS -H "x-api-key: $API_KEY_VALUE" "$BASE_URL/metrics/daily" >/tmp/resolvekit_metrics_daily.json
+curl -fsS -H "x-api-key: $CONFIGURATOR_API_KEY_VALUE" "$BASE_URL/traces/$TRACE_ID" >/tmp/resolvekit_trace.json
+curl -fsS -H "x-api-key: $CONFIGURATOR_API_KEY_VALUE" "$BASE_URL/metrics/daily" >/tmp/resolvekit_metrics_daily.json
 
 preview_payload='{
   "source_key": "knowledge_base",

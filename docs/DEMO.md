@@ -26,14 +26,16 @@ Current demo-backed golden eval:
 
 - 52 evaluated support-style cases.
 - Source-safety hard failures: 0.
-- Retrieval Recall@3: 0.7021.
-- Retrieval Recall@5: 0.766.
-- Mean reciprocal rank: 0.5798.
+- Retrieval Recall@3: 0.6596.
+- Retrieval Recall@5: 0.6596.
+- Mean reciprocal rank: 0.5709.
+- Source precision: 0.4716.
+- Citation precision: 1.0.
 - Route accuracy: 1.0.
-- Confidence band accuracy: 1.0.
-- Abstention accuracy: 1.0.
-- Validation/review warnings: 14.
-- Latest broad non-live pytest slice: 202 passed, 23 deselected.
+- Confidence band accuracy: 0.75.
+- Abstention accuracy: 0.7692.
+- Validation/review warnings: 12.
+- Latest focused selector slice: 3 passed.
 
 ## Demo Sources
 

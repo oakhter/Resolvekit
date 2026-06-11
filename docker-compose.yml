@@ -48,7 +48,7 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-    command: ["python", "scripts/onboarding_server.py"]
+    command: ["python", "-m", "scripts.onboarding_server"]
 
 volumes:
   resolvekit_pgdata:

@@ -1915,7 +1915,7 @@ async def launch_readiness():
         "csv_demo_data_exists": (BASE_DIR / "demo_data" / "csv" / "resolvekit_demo_kb.csv").exists(),
         "xlsx_demo_data_exists": (BASE_DIR / "demo_data" / "xlsx" / "resolvekit_demo_kb.xlsx").exists(),
         "pdf_demo_data_exists": (BASE_DIR / "demo_data" / "pdf" / "pdf_manifest.csv").exists(),
-        "golden_set_exists": (BASE_DIR / "eval" / "golden" / "resolvekit_v0_1.jsonl").exists(),
+        "golden_set_exists": (BASE_DIR / "eval" / "golden_set" / "v3_1_starter.jsonl").exists(),
         "demo_case_coverage": len(demo_cases) >= 15 and {"green", "yellow", "red"} <= behaviors,
         "demo_case_format_coverage": all(any(str(source).startswith(prefix) for source in expected_sources) for prefix in ("csv_", "xlsx_", "pdf_")),
         "ab_stage2_report_exists": (BASE_DIR / "experiments" / "reports" / "stage2_kb_loading_latest.json").exists(),

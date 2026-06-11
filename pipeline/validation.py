@@ -59,6 +59,16 @@ def _invalid_citation_syntax(text: str) -> list[str]:
     return sorted(set(invalid))
 
 
+def _audit_resolution(resolution: dict) -> dict:
+    canonical = resolution.get("canonical_resolution")
+    if isinstance(canonical, dict) and any(
+        str(canonical.get(key, "")).strip()
+        for key in ("root_cause", "resolution_steps", "draft_email", "sources")
+    ):
+        return canonical
+    return resolution
+
+
 def run(context: dict) -> dict:
     resolution = context.get("resolution", {})
     eval_score = context.get("eval_score", {})
@@ -79,10 +89,17 @@ def run(context: dict) -> dict:
         )
 
     # ── Auditor: structured checklist ────────────────────────────
-    root_cause = resolution.get("root_cause", "")
-    steps = resolution.get("resolution_steps", "")
-    email = resolution.get("draft_email", "")
-    sources = resolution.get("sources", "")
+    audit_resolution = _audit_resolution(resolution)
+    root_cause = audit_resolution.get("root_cause", "")
+    steps = audit_resolution.get("resolution_steps", "")
+    email = audit_resolution.get("draft_email", "")
+    sources = audit_resolution.get("sources", "")
+    visible_response_text = "\n".join([
+        resolution.get("root_cause", ""),
+        resolution.get("resolution_steps", ""),
+        resolution.get("draft_email", ""),
+        resolution.get("sources", ""),
+    ])
     evidence_bundle = context.get("evidence_bundle")
     if not evidence_bundle:
         evidence_bundle = EvidenceBundle.from_chunks(top_chunks, audience="customer")
@@ -90,8 +107,18 @@ def run(context: dict) -> dict:
 
     response_text = "\n".join([root_cause, steps, email, sources])
     factual_text = "\n".join([root_cause, steps])
-    cited_labels = set(re.findall(r"\[KB-(\d+)\]", response_text))
+    cited_labels = set(re.findall(r"\[KB-(\d+)\]", "\n".join([response_text, visible_response_text])))
+    visible_cited_labels = set(re.findall(r"\[KB-(\d+)\]", visible_response_text))
     valid_labels = {citation.citation_id.replace("KB-", "") for citation in evidence_bundle.citations}
+    citations_by_label = {
+        citation.citation_id.replace("KB-", ""): citation
+        for citation in evidence_bundle.citations
+    }
+    customer_facing_citations = [
+        citations_by_label[label].to_dict()
+        for label in sorted(visible_cited_labels)
+        if label in citations_by_label
+    ]
     missing_citations = sorted(label for label in cited_labels if label not in valid_labels)
     blocked_citations = evidence_bundle.blocked + [
         {"citation_id": f"KB-{label}", "reason": "citation ID does not resolve to approved evidence"}
@@ -124,7 +151,9 @@ def run(context: dict) -> dict:
         ),
     }
     unsupported_claims = []
-    invalid_citations = _invalid_citation_syntax(response_text)
+    invalid_citations = sorted(set(
+        _invalid_citation_syntax(response_text) + _invalid_citation_syntax(visible_response_text)
+    ))
     if invalid_citations:
         unsupported_claims.append(
             "Invalid citation syntax used; only [KB-N] citations are allowed: "
@@ -132,13 +161,14 @@ def run(context: dict) -> dict:
         )
     if sources.strip().lower() == "general technical knowledge":
         unsupported_claims.append("Customer-facing response used general technical knowledge instead of approved sources.")
+    is_abstention = bool(resolution.get("draft_unavailable_reason"))
     if resolution.get("confidence_scorer", {}).get("confidence_band") == "red" and email:
         unsupported_claims.append("Response produced a customer draft despite red confidence.")
-    if resolution.get("confidence_scorer", {}).get("confidence_band") == "red" and (root_cause or steps):
+    if resolution.get("confidence_scorer", {}).get("confidence_band") == "red" and (root_cause or steps) and not is_abstention:
         unsupported_claims.append("Response answered directly despite red confidence.")
     evidence_table = context.get("evidence_table", {})
     supported_facts = evidence_table.get("supported_facts", []) if isinstance(evidence_table, dict) else []
-    if (root_cause or steps) and supported_facts and not re.search(r"\[KB-\d+\]", factual_text):
+    if (root_cause or steps) and supported_facts and not is_abstention and not re.search(r"\[KB-\d+\]", factual_text):
         unsupported_claims.append("Factual answer fields did not cite approved evidence.")
     if isinstance(evidence_table, dict) and evidence_table and top_chunks and not supported_facts:
         unsupported_claims.append("Evidence table has no supported facts for responder grounding.")
@@ -149,7 +179,7 @@ def run(context: dict) -> dict:
         if item not in missing_required_context
     )
     if missing_required_context:
-        lower_response = response_text.lower()
+        lower_response = visible_response_text.lower()
         unacknowledged = [
             item for item in missing_required_context
             if str(item).lower() not in lower_response and "missing" not in lower_response
@@ -160,7 +190,7 @@ def run(context: dict) -> dict:
             )
 
     if source_conflicts:
-        lower_response = response_text.lower()
+        lower_response = visible_response_text.lower()
         if "conflict" not in lower_response and "review" not in lower_response and "uncertain" not in lower_response:
             unsupported_claims.append("Source conflicts were not surfaced in the response.")
 
@@ -251,6 +281,7 @@ def run(context: dict) -> dict:
         },
         "evaluation_skipped": evaluation_skipped,
         "citations": [citation.to_dict() for citation in evidence_bundle.citations],
+        "customer_facing_citations": customer_facing_citations,
     }
     context["resolution"] = resolution
     return context

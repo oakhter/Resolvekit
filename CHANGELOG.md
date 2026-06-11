@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- Public demo onboarding now binds correctly in Docker, uses non-interactive KB loading, routes uploaded custom CSV knowledge into the vector DB even in demo mode, and makes onboarding vector ingest CSV-only instead of silently accepting XLSX/PDF uploads that are preview-only.
+- Golden eval release gates now support explicit `public_alpha` and `production` profiles. The alpha profile allows the current zero-hard-failure warning state, while the production profile blocks on validation/review count, source precision, Recall@3/5, and required-point coverage targets.
+- Source-safety gate recovery now separates customer-facing citations from retrieved evidence context, adds triage reporting, tightens route-critical evidence selection, normalizes stale abstention drafts out of customer-facing evals, and refreshes the golden run: release gate passes with 0 hard failures, 12 validation/review warnings, Recall@3/5 at 0.6596, source precision at 0.4716, citation precision at 1.0, with the focused eval/source-safety suite passing.
 - Phase 8 advanced reasoning experiment is implemented with typed planner output, query-decomposed retrieval, evidence tables, structured reply rendering, stricter validation, and trace/retrieval diagnostics.
 - Phase 9 GraphRAG is registered only as a disabled/fail-closed retrieval experiment arm; current RAG plus query decomposition is the active experiment path.
 - Phase 10 docs were consolidated into a compact reader set, with `docs/TECHNICAL.md` restored as the project orientation guide and release gates kept in `docs/RELEASE_CHECKLIST.md`.

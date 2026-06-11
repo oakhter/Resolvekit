@@ -20,6 +20,7 @@ import re
 import time
 import json
 import hashlib
+import argparse
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +36,7 @@ from sentence_transformers import SentenceTransformer
 from backend.core import config
 from backend.core import project_config
 from backend.core.run_trace import redact_text, redaction_status
+from backend.providers.embedding_model import smoke_test_embedding, smoke_test_mode_enabled
 from backend.db.schema import (
     _safe_schema_name,
     ensure_vector_schema,
@@ -52,6 +54,9 @@ LOADER_VERSION = "v3.1-evidence-metadata"
 
 
 def get_embedding(text: str) -> list:
+    if smoke_test_mode_enabled():
+        return smoke_test_embedding(text)
+
     global _model
     if _model is None:
         print("Loading embedding model...", flush=True)
@@ -223,17 +228,17 @@ def configured_source_paths() -> list[str]:
 
 
 def loader_source_paths() -> list[str]:
-    if config.DEMO_MODE:
-        return [
-            os.path.join(PROCESSED_DIR, filename)
-            for filename in sorted(os.listdir(PROCESSED_DIR))
-            if filename.endswith(".csv")
-        ]
-
     custom_paths = [
         path for path in configured_source_paths()
         if path.endswith(".csv") and not is_demo_source_path(path)
     ]
+    if config.DEMO_MODE:
+        demo_paths = [
+            os.path.join(PROCESSED_DIR, filename)
+            for filename in sorted(os.listdir(PROCESSED_DIR))
+            if filename.endswith(".csv")
+        ]
+        return list(dict.fromkeys(demo_paths + custom_paths))
     if custom_paths:
         return custom_paths
 
@@ -1045,7 +1050,11 @@ def load_csv(
 
 
 # ── Main ──────────────────────────────────────────────────────
-def main():
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description="Load configured ResolveKit knowledge sources into the vector DB.")
+    parser.add_argument("--all", action="store_true", dest="select_all", help="Load every discovered source without prompting.")
+    args = parser.parse_args(argv)
+
     print("=" * 50)
     print("  Knowledge Base Loader")
     print("=" * 50)
@@ -1076,21 +1085,27 @@ def main():
         print(f"  {i}. {f}  [{ftype}]")
     print()
 
-    print("  Which files to load?")
-    print("  Enter number(s) separated by comma, or 'all'")
-    print()
-    choice = input("  > ").strip().lower()
-    print()
-
-    if choice == "all":
+    if args.select_all:
         selected = csv_paths
     else:
-        try:
-            indices  = [int(x.strip()) - 1 for x in choice.split(",")]
-            selected = [csv_paths[i] for i in indices]
-        except (ValueError, IndexError):
-            print("  Invalid selection.")
-            return
+        print("  Which files to load?")
+        print("  Enter number(s) separated by comma, or 'all'")
+        print()
+        choice = input("  > ").strip().lower()
+        print()
+        if choice == "all":
+            selected = csv_paths
+        else:
+            try:
+                indices  = [int(x.strip()) - 1 for x in choice.split(",")]
+                selected = [csv_paths[i] for i in indices]
+            except (ValueError, IndexError):
+                print("  Invalid selection.")
+                return
+
+    if not selected:
+        print("  No files selected.")
+        return
 
     print("  Connecting to knowledge schema...", flush=True)
     try:

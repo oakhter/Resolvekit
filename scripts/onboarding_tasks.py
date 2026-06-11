@@ -130,7 +130,7 @@ def setup_database() -> dict:
 
 
 def load_knowledge() -> dict:
-    return run_command([_python(), "knowledge_loader/kb_loader.py"], timeout=300)
+    return run_command([_python(), "knowledge_loader/kb_loader.py", "--all"], timeout=300)
 
 
 def run_doctor() -> dict:
@@ -189,8 +189,8 @@ def first_draft_smoke(ticket: str = "Customer cannot sign in on mobile app after
 def save_uploaded_source(filename: str, content_base64: str) -> dict:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = Path(filename).name
-    if Path(safe_name).suffix.lower() not in {".csv", ".xlsx", ".pdf"}:
-        return {"ok": False, "error": "Supported formats: CSV, XLSX, PDF."}
+    if Path(safe_name).suffix.lower() != ".csv":
+        return {"ok": False, "error": "Vector ingest currently supports CSV knowledge files."}
     target = UPLOAD_DIR / safe_name
     target.write_bytes(base64.b64decode(content_base64))
     rel = str(target.relative_to(ROOT))
@@ -213,6 +213,10 @@ def _source_key(path: str) -> str:
 def ingest_uploaded_sources(paths: list[str]) -> dict:
     if not paths:
         return {"ok": False, "stderr": "No uploaded source paths supplied."}
+    unsupported = [path for path in paths if Path(path).suffix.lower() != ".csv"]
+    if unsupported:
+        names = ", ".join(Path(path).name for path in unsupported)
+        return {"ok": False, "stderr": f"Vector ingest currently supports CSV knowledge files only: {names}"}
     sources_path = ROOT / "config" / "sources.yaml"
     data = {"sources": {}}
     if sources_path.exists():

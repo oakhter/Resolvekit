@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -8,6 +9,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from scripts import onboarding_tasks
+
+CONTAINER_MODE = os.getenv("ONBOARDING_CONTAINER_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,10 +87,14 @@ def export_status():
     return {"status": "ok", "json": json.dumps(onboarding_tasks.system_status(), indent=2)}
 
 
+def bind_host() -> str:
+    return "0.0.0.0" if CONTAINER_MODE else "127.0.0.1"
+
+
 def main() -> int:
     import uvicorn
 
-    uvicorn.run("scripts.onboarding_server:app", host="127.0.0.1", port=8765, reload=False, log_level="warning")
+    uvicorn.run("scripts.onboarding_server:app", host=bind_host(), port=8765, reload=False, log_level="warning")
     return 0
 
 

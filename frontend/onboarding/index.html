@@ -147,8 +147,8 @@ async function runAll() {
 function renderSources() {
   return `
     <h2>Data Sources</h2>
-    <p class="small">Select CSV, XLSX, or born-digital PDF files. Files are copied into <code>demo_data/onboarding/uploads</code> and previewed before ingestion.</p>
-    <input id="files" type="file" multiple accept=".csv,.xlsx,.pdf">
+    <p class="small">Select CSV knowledge files. Files are copied into <code>demo_data/onboarding/uploads</code>, previewed, and loaded into the vector DB.</p>
+    <input id="files" type="file" multiple accept=".csv">
     <div class="row"><button onclick="uploadSources()">Upload and preview</button><button onclick="ingestSources()">Ingest uploaded sources</button><button class="secondary" onclick="setStep(4)">Continue</button></div>
     <pre>${escapeHtml(JSON.stringify(state.uploads, null, 2))}</pre>
   `;

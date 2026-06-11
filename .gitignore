@@ -10,6 +10,8 @@ diagnostics/logs/
 *.log
 .claude/
 .codex
+.understand-anything/
+.worktrees/
 Claude.md
 .vscode/
 docs/*

@@ -306,10 +306,7 @@ class TestResolve:
         r2 = httpx.post(f"{base_url}/resolve", json=_FULL_PAYLOAD, headers=auth, timeout=TIMEOUT_RESOLVE)
         assert r2.status_code == 200
         res = r2.json()["resolution"]
-        if _is_safe_abstention(res):
-            assert res["retrieval_signals"]["used_response_cache"] is False
-        else:
-            assert res["from_cache"] is True, "Second identical call should be cached"
+        assert res["from_cache"] is True, "Second identical call should be cached"
 
     def test_different_products_different_results(self, base_url, auth):
         if not _SECOND_PRODUCT_VALUE:
@@ -991,6 +988,97 @@ def test_validation_skips_evaluator_failures_when_evaluation_skipped():
     assert result["resolution"]["validation"]["gatekeeper_flagged"] is False
 
 
+def test_validation_audits_canonical_resolution_after_display_filtering():
+    context = {
+        "resolution": {
+            "confidence": "MEDIUM",
+            "root_cause": "",
+            "resolution_steps": "1. Check the approved setup path and retry.",
+            "sources": "demo_knowledge_base.csv",
+            "draft_email": "Subject: Setup help\n\nHi,\n\nPlease check the approved setup path and retry.\n\nKind regards,\nSupport Team",
+            "canonical_resolution": {
+                "confidence": "MEDIUM",
+                "root_cause": "The approved setup path applies to this request. [KB-1]",
+                "resolution_steps": "1. Check the approved setup path and retry.",
+                "sources": "demo_knowledge_base.csv",
+                "draft_email": "Subject: Setup help\n\nHi,\n\nPlease check the approved setup path and retry.\n\nKind regards,\nSupport Team",
+            },
+        },
+        "eval_score": {"evaluation_skipped": True},
+        "request_meta": {"permission_level": "admin", "access_channel": "website"},
+        "ticket": {"cleaned": "Need setup help."},
+        "top_chunks": [approved_chunk()],
+        "evidence_table": {
+            "supported_facts": [{"claim": "Approved setup path applies.", "citations": ["KB-1"]}],
+            "missing_context": [],
+            "conflicts": [],
+        },
+        "source_conflicts": [],
+    }
+    validation_data = validation.run(context)["resolution"]["validation"]
+    assert not any(
+        "Factual answer fields did not cite approved evidence" in claim
+        for claim in validation_data["unsupported_claims"]
+    )
+    assert validation_data["auditor"]["citations_present"] is True
+
+
+def test_validation_does_not_treat_abstention_guidance_as_uncited_factual_answer():
+    context = {
+        "resolution": {
+            "confidence": "LOW",
+            "root_cause": "",
+            "resolution_steps": "Escalate for human review or add an approved KB source.",
+            "sources": "",
+            "draft_email": "",
+            "draft_unavailable_reason": "Draft unavailable because no approved source supports a safe answer.",
+            "confidence_scorer": {"confidence_band": "red"},
+        },
+        "eval_score": {"evaluation_skipped": True},
+        "request_meta": {},
+        "ticket": {"cleaned": "Need setup help."},
+        "top_chunks": [approved_chunk()],
+        "evidence_table": {
+            "supported_facts": [{"claim": "Approved setup path applies.", "citations": ["KB-1"]}],
+            "missing_context": [],
+            "conflicts": [],
+        },
+        "source_conflicts": [],
+    }
+    validation_data = validation.run(context)["resolution"]["validation"]
+    assert not any(
+        "Factual answer fields did not cite approved evidence" in claim
+        for claim in validation_data["unsupported_claims"]
+    )
+
+
+def test_abstention_replacement_drops_stale_answer_fields():
+    from backend.core.orchestrator import _abstention_response, _replace_with_abstention
+
+    resolution = {
+        "raw": "Old answered text with [KB-1].",
+        "rendered_reply": "Old rendered answer with [KB-1].",
+        "structured_reply": {"citations": ["[KB-1]"]},
+        "canonical_resolution": {"root_cause": "Old root cause. [KB-1]"},
+        "cache_key": "abc",
+        "usage": {"responder": {"tokens_out": 10}},
+        "from_cache": False,
+    }
+    fallback = _abstention_response("No approved source supports this answer.")
+    replaced = _replace_with_abstention(resolution, fallback)
+    assert "raw" not in replaced
+    assert "rendered_reply" not in replaced
+    assert "structured_reply" not in replaced
+    assert replaced["canonical_resolution"]["root_cause"] == replaced["root_cause"]
+    assert replaced["cache_key"] == "abc"
+    assert replaced["usage"] == {"responder": {"tokens_out": 10}}
+
+
+def test_responder_prompt_requires_resolution_step_citations():
+    assert "Every factual or actionable resolution step must cite" in responder.SYSTEM_PROMPT
+    assert "[KB-N]" in responder.SYSTEM_PROMPT
+
+
 def test_parent_expansion_falls_back_when_parent_missing(monkeypatch):
     class Cursor:
         def execute(self, *args):
@@ -1594,6 +1682,93 @@ def test_demo_mode_controls_loader_sandbox_sources(tmp_path, monkeypatch):
     assert custom_paths == ["custom.csv"]
 
 
+def test_demo_mode_includes_configured_custom_csv_sources(tmp_path, monkeypatch):
+    processed = tmp_path / "processed"
+    uploaded = tmp_path / "uploads"
+    processed.mkdir()
+    uploaded.mkdir()
+    demo = processed / "demo_knowledge_base.csv"
+    custom = uploaded / "customer_kb.csv"
+    demo.write_text("title,content\nDemo,Demo content here\n", encoding="utf-8")
+    custom.write_text("title,content\nCustom,Custom content here\n", encoding="utf-8")
+    monkeypatch.setattr(kb_loader, "PROCESSED_DIR", str(processed))
+    monkeypatch.setattr("backend.core.config.DEMO_MODE", True)
+    monkeypatch.setattr(kb_loader, "configured_source_paths", lambda: [str(custom)])
+
+    source_names = [Path(path).name for path in kb_loader.loader_source_paths()]
+
+    assert source_names == ["demo_knowledge_base.csv", "customer_kb.csv"]
+
+
+def test_onboarding_server_binds_all_interfaces_in_container(monkeypatch):
+    from scripts import onboarding_server
+
+    monkeypatch.setattr(onboarding_server, "CONTAINER_MODE", True)
+    assert onboarding_server.bind_host() == "0.0.0.0"
+
+    monkeypatch.setattr(onboarding_server, "CONTAINER_MODE", False)
+    assert onboarding_server.bind_host() == "127.0.0.1"
+
+
+def test_onboarding_compose_runs_server_as_module():
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert 'command: ["python", "-m", "scripts.onboarding_server"]' in compose
+
+
+def test_onboarding_load_knowledge_uses_noninteractive_all(monkeypatch):
+    from scripts import onboarding_tasks
+
+    calls = []
+    monkeypatch.setattr(onboarding_tasks, "run_command", lambda args, timeout=300: calls.append(args) or {"ok": True})
+
+    result = onboarding_tasks.load_knowledge()
+
+    assert result["ok"] is True
+    assert calls == [[onboarding_tasks._python(), "knowledge_loader/kb_loader.py", "--all"]]
+
+
+def test_onboarding_vector_ingest_accepts_csv_only(tmp_path):
+    from scripts import onboarding_tasks
+
+    csv_file = tmp_path / "customer.csv"
+    xlsx_file = tmp_path / "customer.xlsx"
+    pdf_file = tmp_path / "customer.pdf"
+
+    csv_file.write_text("title,content\nCustom,Custom KB answer.\n", encoding="utf-8")
+    xlsx_file.write_text("placeholder", encoding="utf-8")
+    pdf_file.write_bytes(b"%PDF-1.4 placeholder")
+
+    result = onboarding_tasks.ingest_uploaded_sources([str(csv_file), str(xlsx_file), str(pdf_file)])
+
+    assert result["ok"] is False
+    assert "CSV" in result["stderr"]
+
+
+def test_onboarding_upload_ui_describes_csv_vector_ingest():
+    html = Path("frontend/onboarding/index.html").read_text(encoding="utf-8")
+
+    assert 'accept=".csv"' in html
+    assert "CSV knowledge files" in html
+    assert "XLSX" not in html.split("function renderSources()", 1)[1].split("function uploadSources()", 1)[0]
+
+
+def test_kb_loader_all_flag_skips_interactive_selection():
+    import inspect
+
+    main_source = inspect.getsource(kb_loader.main)
+
+    assert "select_all" in main_source
+    assert "input(" in main_source
+
+
+def test_launch_readiness_uses_active_golden_set_path():
+    app_source = Path("backend/api/app.py").read_text(encoding="utf-8")
+
+    assert "eval\" / \"golden_set\" / \"v3_1_starter.jsonl" in app_source
+    assert "golden\" / \"resolvekit_v0_1.jsonl" not in app_source.split('@app.get("/launch-readiness"', 1)[1]
+
+
 def test_public_demo_has_distinct_app_and_website_rows():
     with (ROOT / "knowledge_loader/processed/demo_knowledge_base.csv").open(encoding="utf-8-sig", newline="") as fh:
         rows = list(csv.DictReader(fh))
@@ -2182,8 +2357,8 @@ def test_source_type_merge_avoids_duplicate_parent_sections_and_prefers_fresh_so
 
 def test_policy_vs_faq_conflict_caps_confidence():
     chunks = [
-        chunk(id="policy", source_id="policies:retention", source_type="policy", rerank_score=8.0),
-        chunk(id="faq", source_id="faq:retention", source_type="faq", rerank_score=7.0),
+        chunk(id="policy", source_id="policies:retention", source_type="policy", rerank_score=8.0, status="allowed"),
+        chunk(id="faq", source_id="faq:retention", source_type="faq", rerank_score=7.0, status="disabled"),
     ]
     conflicts = [conflict.to_dict() for conflict in detect_source_conflicts(chunks)]
     score = compute_scorer_result(chunks, source_conflicts=conflicts)
@@ -2191,6 +2366,14 @@ def test_policy_vs_faq_conflict_caps_confidence():
     assert score.source_conflict_detected is True
     assert score.confidence_band in {"yellow", "red"}
     assert score.confidence_score <= 0.45
+
+
+def test_policy_and_kb_without_explicit_disagreement_are_not_conflicts():
+    chunks = [
+        chunk(id="policy", source_id="policies:export", source_type="policy", rerank_score=4.0),
+        chunk(id="kb", source_id="knowledge_base:export", source_type="knowledge_base", rerank_score=3.0),
+    ]
+    assert detect_source_conflicts(chunks) == []
 
 
 def test_confidence_exposes_v3_2_calibration_signals():
@@ -2623,11 +2806,14 @@ def test_eval_report_builder_writes_markdown_and_updates_readme(tmp_path):
         "avg_tokens_out": 25.0,
         "avg_cost_usd": 0.01,
         "total_cost_usd": 0.01,
-        "release_gate": {"passed": True},
+        "release_gate": {"passed": True, "profile": "production"},
     }
-    assert "Recall@1" in build_markdown(report)
+    markdown = build_markdown(report)
+    assert "Recall@1" in markdown
+    assert "Release profile" in markdown
     block = build_readme_block(report)
     assert "eval-report:start" in block
+    assert "Release profile" in block
     readme = tmp_path / "README.md"
     readme.write_text("Current stored golden-eval report:\n\nold\n")
     update_readme(readme, block)
@@ -2780,13 +2966,126 @@ def test_os_detect_reports_supported_shape():
     assert "docker_install_hint" in info
 
 
+def test_public_smoke_starts_api_without_onboarding_port_collision():
+    script = Path("scripts/public_smoke.sh").read_text(encoding="utf-8")
+
+    assert "docker compose up -d --build db app" in script
+
+
+def test_direct_evidence_selection_dedupes_sources_and_caps_context():
+    from backend.core.orchestrator import _select_direct_evidence_chunks
+
+    chunks = [
+        {"id": "a1", "source_id": "source:a", "rerank_score": 9.0},
+        {"id": "a2", "source_id": "source:a", "rerank_score": 8.0, "retrieval_reason": "sibling"},
+        {"id": "b1", "source_id": "source:b", "rerank_score": 7.0},
+        {"id": "c1", "source_id": "source:c", "rerank_score": 6.0},
+        {"id": "d1", "source_id": "source:d", "rerank_score": 5.0},
+    ]
+
+    selected = _select_direct_evidence_chunks(chunks, {"routing_strategy": "access"})
+
+    assert [chunk["id"] for chunk in selected] == ["a1", "b1", "c1"]
+
+
+def test_direct_evidence_selection_prioritizes_route_critical_sources():
+    from backend.core.orchestrator import _select_direct_evidence_chunks
+
+    chunks = [
+        {"id": "generic", "source_id": "kb:export", "source_type": "official_help_article", "rerank_score": 9.0},
+        {"id": "release", "source_id": "rn:web", "source_type": "release_note", "rerank_score": 8.0},
+        {"id": "policy", "source_id": "policy:export", "source_type": "policy", "rerank_score": 4.0},
+    ]
+
+    selected = _select_direct_evidence_chunks(chunks, {"routing_strategy": "policy"})
+
+    assert [chunk["id"] for chunk in selected] == ["policy", "generic", "release"]
+
+
+def test_direct_evidence_selection_demotes_route_type_without_ticket_overlap():
+    from backend.core.orchestrator import _select_direct_evidence_chunks
+
+    chunks = [
+        {"id": "trial_policy", "source_id": "policies:trial_workspace_retention", "source_type": "policy", "rerank_score": 8.0},
+        {"id": "export_kb", "source_id": "knowledge_base:export_conversation_history", "source_type": "knowledge_base", "rerank_score": 3.0},
+        {"id": "export_policy", "source_id": "policies:data_export_eligibility", "source_type": "policy", "rerank_score": 2.0},
+    ]
+
+    selected = _select_direct_evidence_chunks(
+        chunks,
+        {"routing_strategy": "policy", "ticket": {"cleaned": "cannot find compliance export"}},
+    )
+
+    assert [chunk["id"] for chunk in selected][:2] == ["export_policy", "export_kb"]
+
+
+def test_direct_evidence_selection_filters_mobile_badge_when_notification_source_matches():
+    from backend.core.orchestrator import _select_direct_evidence_chunks
+
+    chunks = [
+        {"id": "badge", "source_id": "known_issues:kb_delayed_mobile_badge_counts", "source_type": "known_issue", "rerank_score": 8.0},
+        {"id": "push", "source_id": "knowledge_base:kb_mobile_notification_troubleshooting", "source_type": "knowledge_base", "rerank_score": 4.0},
+    ]
+
+    selected = _select_direct_evidence_chunks(
+        chunks,
+        {"routing_strategy": "bug", "ticket": {"cleaned": "not getting mobile notifications for team inbox"}},
+    )
+
+    assert [chunk["id"] for chunk in selected] == ["push"]
+
+
+def test_public_smoke_uses_admin_key_for_admin_routes():
+    script = Path("scripts/public_smoke.sh").read_text(encoding="utf-8")
+
+    assert '-H "x-api-key: $CONFIGURATOR_API_KEY_VALUE" "$BASE_URL/traces/$TRACE_ID"' in script
+    assert '-H "x-api-key: $CONFIGURATOR_API_KEY_VALUE" "$BASE_URL/metrics/daily"' in script
+
+
+def test_smoke_test_embeddings_do_not_load_local_model(monkeypatch):
+    monkeypatch.setenv("SMOKE_TEST_MODE", "true")
+
+    from backend.providers import embedding_model
+    from knowledge_loader import kb_loader
+
+    def fail_model_load(*args, **kwargs):
+        raise AssertionError("smoke test embeddings should not load SentenceTransformer")
+
+    monkeypatch.setattr(embedding_model, "_model", None)
+    monkeypatch.setattr(embedding_model, "SentenceTransformer", fail_model_load)
+    monkeypatch.setattr(kb_loader, "_model", None)
+    monkeypatch.setattr(kb_loader, "SentenceTransformer", fail_model_load)
+
+    provider_vec = embedding_model.get_embedding("mobile login 403")
+    loader_vec = kb_loader.get_embedding("mobile login 403")
+
+    assert len(provider_vec) == 384
+    assert len(loader_vec) == 384
+    assert provider_vec == loader_vec
+    assert any(value != 0 for value in provider_vec)
+
+
+def test_kb_identifier_insert_has_placeholder_for_every_column():
+    import re
+    from backend.db import schema
+
+    columns_block = re.search(
+        r"INSERT INTO knowledge_base_identifier \((.*?)\)\nVALUES",
+        schema.INSERT_KB_IDENTIFIER,
+        re.S,
+    ).group(1)
+    columns = [column.strip() for column in columns_block.replace("\n", " ").split(",") if column.strip()]
+
+    assert schema.INSERT_KB_IDENTIFIER.count("%s") == len(columns)
+
+
 def test_onboarding_uploaded_sources_update_sources_config(tmp_path, monkeypatch):
     from scripts import onboarding_tasks
 
     monkeypatch.setattr(onboarding_tasks, "ROOT", tmp_path)
     monkeypatch.setattr(onboarding_tasks, "load_knowledge", lambda: {"ok": True, "stdout": "loaded"})
     (tmp_path / "config").mkdir()
-    result = onboarding_tasks.ingest_uploaded_sources(["demo_data/onboarding/uploads/help.csv", "demo_data/onboarding/uploads/guide.pdf"])
+    result = onboarding_tasks.ingest_uploaded_sources(["demo_data/onboarding/uploads/help.csv", "demo_data/onboarding/uploads/guide.csv"])
 
     assert result["ok"] is True
     text = (tmp_path / "config/sources.yaml").read_text(encoding="utf-8")
@@ -2926,9 +3225,10 @@ def test_review_queue_endpoint_returns_redacted_summary(monkeypatch):
     fake_conn.__enter__.return_value = fake_conn
 
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.get_conn", lambda: fake_conn)
 
-    response = TestClient(app).get("/review-queue", headers={"x-api-key": "dev-secret"})
+    response = TestClient(app).get("/review-queue", headers={"x-api-key": "admin-secret"})
 
     assert response.status_code == 200
     item = response.json()["items"][0]
@@ -3452,11 +3752,12 @@ def test_knowledge_patch_creation_requires_review_status(monkeypatch):
         return "kp_1"
 
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.create_knowledge_patch", fake_create_knowledge_patch)
 
     response = TestClient(app).post(
         "/knowledge-patches",
-        headers={"x-api-key": "dev-secret"},
+        headers={"x-api-key": "admin-secret"},
         json={
             "knowledge_issue_id": "ki_1",
             "patch_type": "disable_chunk",
@@ -3480,11 +3781,12 @@ def test_experiment_registry_defaults_offline_only(monkeypatch):
         return "exp_1"
 
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.create_experiment", fake_create_experiment)
 
     response = TestClient(app).post(
         "/experiments",
-        headers={"x-api-key": "dev-secret"},
+        headers={"x-api-key": "admin-secret"},
         json={"name": "retrieval_strategy_v1", "description": "Compare retrieval arms."},
     )
 
@@ -3598,11 +3900,12 @@ def test_source_chunk_disable_marks_chunk_inactive(monkeypatch):
             return FakeCursor()
 
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.psycopg2.connect", lambda *_args, **_kwargs: FakeConn())
 
     response = TestClient(app).post(
         "/sources/source-1/chunks/chunk-1/disable",
-        headers={"x-api-key": "dev-secret"},
+        headers={"x-api-key": "admin-secret"},
         json={"reason": "stale_source"},
     )
 
@@ -3675,6 +3978,224 @@ def test_golden_eval_counts_forbidden_and_unallowed_source_gates():
     assert any("unallowed" in item for item in report["hard_failures"])
 
 
+def test_golden_eval_hard_gates_customer_facing_citations_not_context_only_sources():
+    from scripts.run_golden_eval import evaluate_stored_results
+
+    rows = [{
+        "ticket_id": "case-1",
+        "expected_confidence_band": "green",
+        "expected_route": "general",
+        "expected_source_ids": ["knowledge_base:allowed"],
+        "forbidden_source_ids": [],
+    }]
+    results = [{
+        "ticket_id": "case-1",
+        "confidence_band": "green",
+        "route": "general",
+        "retrieved_source_ids": ["knowledge_base:allowed", "knowledge_base:context"],
+        "cited_source_ids": ["knowledge_base:allowed", "knowledge_base:context"],
+        "customer_facing_cited_source_ids": ["knowledge_base:allowed"],
+    }]
+
+    report = evaluate_stored_results(rows, results)
+
+    assert report["hard_failure_count"] == 0
+    assert report["citation_precision"] == 1.0
+    assert report["source_precision"] == 0.5
+
+
+def test_golden_eval_ignores_stale_abstention_citations():
+    from scripts.run_golden_eval import evaluate_stored_results
+
+    rows = [{
+        "ticket_id": "case-1",
+        "expected_confidence_band": "red",
+        "expected_route": "general",
+        "expected_source_ids": ["knowledge_base:allowed"],
+        "forbidden_source_ids": [],
+        "review_required_expected": True,
+    }]
+    results = [{
+        "ticket_id": "case-1",
+        "confidence_band": "red",
+        "route": "general",
+        "abstained": True,
+        "fallback_reason": "Draft unavailable because no approved source supports a safe answer.",
+        "cited_source_ids": ["knowledge_base:stale"],
+        "customer_facing_cited_source_ids": ["knowledge_base:stale"],
+    }]
+
+    report = evaluate_stored_results(rows, results)
+
+    assert report["hard_failure_count"] == 0
+
+
+def test_golden_eval_ignores_stale_abstention_unsupported_claims():
+    from scripts.run_golden_eval import evaluate_stored_results
+
+    rows = [{
+        "ticket_id": "case-1",
+        "expected_confidence_band": "red",
+        "expected_route": "general",
+        "expected_source_ids": [],
+        "forbidden_source_ids": [],
+        "review_required_expected": True,
+    }]
+    results = [{
+        "ticket_id": "case-1",
+        "confidence_band": "red",
+        "route": "general",
+        "abstained": True,
+        "fallback_reason": "Draft unavailable because no approved source supports a safe answer.",
+        "unsupported_factual_claim_count": 1,
+        "unsupported_claims": ["Factual answer fields did not cite approved evidence."],
+        "answer_text": "I do not have enough approved information to answer safely.",
+    }]
+
+    report = evaluate_stored_results(rows, results)
+
+    assert report["hard_failure_count"] == 0
+
+
+def test_generate_golden_results_extracts_only_answer_label_citations():
+    from scripts.generate_golden_results import _result_from_resolution
+
+    resolution = {
+        "root_cause": "Supported by [KB-2].",
+        "resolution_steps": "Try the approved step.",
+        "validation": {
+            "passed": True,
+            "citations": [
+                {"citation_id": "KB-1", "source_id": "knowledge_base:context"},
+                {"citation_id": "KB-2", "source_id": "knowledge_base:allowed"},
+            ],
+        },
+        "retrieval_signals": {
+            "support_context_bundles": [
+                {"label": "KB-1", "source_id": "knowledge_base:context"},
+                {"label": "KB-2", "source_id": "knowledge_base:allowed"},
+            ]
+        },
+        "confidence_scorer": {"confidence_band": "green"},
+    }
+
+    result = _result_from_resolution({"ticket_id": "case-1"}, resolution, latency_ms=123)
+
+    assert result["retrieved_source_ids"] == ["knowledge_base:context", "knowledge_base:allowed"]
+    assert result["customer_facing_cited_source_ids"] == ["knowledge_base:allowed"]
+    assert result["cited_source_ids"] == ["knowledge_base:allowed"]
+
+
+def test_generate_golden_results_hard_claims_exclude_review_only_findings():
+    from scripts.generate_golden_results import _result_from_resolution
+
+    resolution = {
+        "root_cause": "Human review is required. [KB-1]",
+        "validation": {
+            "passed": False,
+            "citations": [{"citation_id": "KB-1", "source_id": "policies:billing"}],
+            "unsupported_claims": [
+                "Response answered directly despite red confidence.",
+                "Response produced a customer draft despite red confidence.",
+                "Factual answer fields did not cite approved evidence.",
+            ],
+        },
+        "confidence_scorer": {"confidence_band": "red"},
+    }
+
+    result = _result_from_resolution({"ticket_id": "case-1"}, resolution, latency_ms=123)
+
+    assert result["unsupported_factual_claim_count"] == 0
+    assert result["validation_review_finding_count"] == 3
+
+
+def test_generate_golden_results_abstention_ignores_stale_rendered_reply_citations():
+    from scripts.generate_golden_results import _result_from_resolution
+
+    resolution = {
+        "root_cause": "I do not have enough approved information to answer safely.",
+        "resolution_steps": "Escalate for human review.",
+        "draft_email": "",
+        "draft_unavailable_reason": "Draft unavailable because no approved source supports a safe answer.",
+        "rendered_reply": "Old pre-abstention answer cited [KB-1].",
+        "raw": "Old raw model answer cited [KB-1].",
+        "validation": {
+            "passed": False,
+            "citations": [{"citation_id": "KB-1", "source_id": "knowledge_base:stale"}],
+        },
+        "confidence_scorer": {"confidence_band": "red"},
+    }
+
+    result = _result_from_resolution({"ticket_id": "case-1"}, resolution, latency_ms=123)
+
+    assert result["customer_facing_cited_source_ids"] == []
+    assert "Old pre-abstention answer" not in result["answer_text"]
+    assert "Old raw model answer" not in result["answer_text"]
+
+
+def test_generate_golden_results_abstention_ignores_factual_citation_warning():
+    from scripts.generate_golden_results import _result_from_resolution
+
+    resolution = {
+        "resolution_steps": "Escalate for human review.",
+        "draft_unavailable_reason": "Draft unavailable because no approved source supports a safe answer.",
+        "validation": {
+            "passed": False,
+            "unsupported_claims": ["Factual answer fields did not cite approved evidence."],
+            "citations": [{"citation_id": "KB-1", "source_id": "knowledge_base:setup"}],
+        },
+        "confidence_scorer": {"confidence_band": "red"},
+    }
+
+    result = _result_from_resolution({"ticket_id": "case-1"}, resolution, latency_ms=123)
+
+    assert result["unsupported_factual_claim_count"] == 0
+    assert result["unsupported_claims"] == []
+
+
+def test_source_safety_triage_buckets_eval_contract_vs_over_citation():
+    from scripts.source_safety_triage import build_triage_report
+
+    golden_rows = [{
+        "ticket_id": "case-1",
+        "expected_source_ids": ["knowledge_base:allowed"],
+    }]
+    result_rows = [{
+        "ticket_id": "case-1",
+        "retrieved_source_ids": ["knowledge_base:allowed", "knowledge_base:context"],
+        "cited_source_ids": ["knowledge_base:context"],
+        "customer_facing_cited_source_ids": ["knowledge_base:context"],
+    }]
+
+    report = build_triage_report(golden_rows, result_rows, source_aliases={})
+
+    assert report["summary"]["case_count"] == 1
+    assert report["summary"]["bucket_counts"]["customer_over_citation"] == 1
+    assert report["cases"][0]["unallowed_customer_facing"] == ["knowledge_base:context"]
+
+
+def test_source_safety_triage_treats_abstention_citations_as_context_only():
+    from scripts.source_safety_triage import build_triage_report
+
+    golden_rows = [{
+        "ticket_id": "case-1",
+        "expected_source_ids": ["knowledge_base:allowed"],
+    }]
+    result_rows = [{
+        "ticket_id": "case-1",
+        "abstained": True,
+        "fallback_reason": "Draft unavailable because no approved source supports a safe answer.",
+        "retrieved_source_ids": ["knowledge_base:allowed", "knowledge_base:context"],
+        "evidence_context_source_ids": ["knowledge_base:allowed", "knowledge_base:context"],
+        "customer_facing_cited_source_ids": ["knowledge_base:context"],
+    }]
+
+    report = build_triage_report(golden_rows, result_rows, source_aliases={})
+
+    assert report["summary"]["bucket_counts"]["context_only_over_breadth"] == 1
+    assert report["cases"][0]["unallowed_customer_facing"] == []
+
+
 def test_loader_split_helpers_exist():
     from knowledge_loader import kb_loader
 
@@ -3684,6 +4205,7 @@ def test_loader_split_helpers_exist():
 
 def test_experiment_registry_and_offline_replay_report(monkeypatch):
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
 
     registry = TestClient(app).get("/experiments/registry", headers={"x-api-key": "dev-secret"})
     assert registry.status_code == 200
@@ -3692,7 +4214,7 @@ def test_experiment_registry_and_offline_replay_report(monkeypatch):
 
     replay = TestClient(app).post(
         "/experiments/offline-replay",
-        headers={"x-api-key": "dev-secret"},
+        headers={"x-api-key": "admin-secret"},
         json={
             "experiment_id": "exp-1",
             "arms": [{"id": "control_current_rag"}, {"id": "structured_reply_v1"}],
@@ -3849,9 +4371,10 @@ def test_source_status_endpoint_reports_freshness_and_quality(monkeypatch):
             return FakeCursor()
 
     monkeypatch.setattr("backend.core.config.API_KEY", "dev-secret")
+    monkeypatch.setattr("backend.core.config.CONFIGURATOR_ADMIN_TOKEN", "admin-secret")
     monkeypatch.setattr("backend.api.app.psycopg2.connect", lambda *_args, **_kwargs: FakeConn())
 
-    response = TestClient(app).get("/sources/status", headers={"x-api-key": "dev-secret"})
+    response = TestClient(app).get("/sources/status", headers={"x-api-key": "admin-secret"})
 
     assert response.status_code == 200
     body = response.json()
@@ -3931,6 +4454,69 @@ def test_release_gate_warns_on_validation_failures_without_safety_failures():
     gate = run_golden_eval.release_gate_report(report, max_avg_latency_ms=1000, max_total_cost_usd=1.0)
     assert gate["passed"] is True
     assert "2 validation/review failures present" in gate["warnings"]
+
+
+def test_release_gate_public_alpha_allows_current_quality_warning_profile():
+    report = {
+        "schema_valid": True,
+        "evaluated_result_count": 52,
+        "hard_failure_count": 0,
+        "validation_failure_count": 12,
+        "retrieval_recall_at_3": 0.6596,
+        "retrieval_recall_at_5": 0.6596,
+        "source_precision": 0.4716,
+        "citation_precision": 1.0,
+        "required_point_coverage": 0.0577,
+        "avg_latency_ms": 100,
+        "total_cost_usd": 0.023234,
+    }
+    gate = run_golden_eval.release_gate_report(report, release_profile="public_alpha")
+    assert gate["passed"] is True
+    assert gate["profile"] == "public_alpha"
+    assert "12 validation/review failures present" in gate["warnings"]
+
+
+def test_release_gate_production_blocks_current_quality_warning_profile():
+    report = {
+        "schema_valid": True,
+        "evaluated_result_count": 52,
+        "hard_failure_count": 0,
+        "validation_failure_count": 12,
+        "retrieval_recall_at_3": 0.6596,
+        "retrieval_recall_at_5": 0.6596,
+        "source_precision": 0.4716,
+        "citation_precision": 1.0,
+        "required_point_coverage": 0.0577,
+        "avg_latency_ms": 100,
+        "total_cost_usd": 0.023234,
+    }
+    gate = run_golden_eval.release_gate_report(report, release_profile="production")
+    assert gate["passed"] is False
+    assert gate["profile"] == "production"
+    assert any("validation/review failures" in blocker for blocker in gate["blockers"])
+    assert any("source_precision" in blocker for blocker in gate["blockers"])
+    assert any("retrieval_recall_at_3" in blocker for blocker in gate["blockers"])
+    assert any("retrieval_recall_at_5" in blocker for blocker in gate["blockers"])
+    assert any("required_point_coverage" in blocker for blocker in gate["blockers"])
+
+
+def test_release_gate_production_passes_when_quality_targets_are_met():
+    report = {
+        "schema_valid": True,
+        "evaluated_result_count": 52,
+        "hard_failure_count": 0,
+        "validation_failure_count": 4,
+        "retrieval_recall_at_3": 0.75,
+        "retrieval_recall_at_5": 0.75,
+        "source_precision": 0.60,
+        "citation_precision": 1.0,
+        "required_point_coverage": 0.50,
+        "avg_latency_ms": 100,
+        "total_cost_usd": 0.023234,
+    }
+    gate = run_golden_eval.release_gate_report(report, release_profile="production")
+    assert gate["passed"] is True
+    assert gate["blockers"] == []
 
 
 def test_release_gate_blocks_latency_and_cost_budgets():

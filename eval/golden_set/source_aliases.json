@@ -27,7 +27,10 @@
   "knowledge_base:source_preview": ["knowledge_base:kb_export_conversation_history"],
   "knowledge_base:source_quality": ["knowledge_base:kb_export_conversation_history"],
   "knowledge_base:support_modes": ["knowledge_base:kb_export_conversation_history"],
-  "known_issues:mobile_badge_delay": ["known_issues:kb_delayed_mobile_badge_counts"],
+  "known_issues:mobile_badge_delay": [
+    "known_issues:kb_delayed_mobile_badge_counts",
+    "known_issues:kb_mobile_queued_reply_badge"
+  ],
   "known_issues:mobile_push": ["knowledge_base:kb_mobile_notification_troubleshooting"],
   "known_issues:mobile_push_team_inbox": ["knowledge_base:kb_mobile_notification_troubleshooting"],
   "policies:account_actions": ["policies:kb_billing_contact_changes"],

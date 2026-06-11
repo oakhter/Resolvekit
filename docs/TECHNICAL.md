@@ -62,7 +62,7 @@ Request model rejects unknown fields. `mode: "suggest"` is the only supported re
 
 ## Source Contract
 
-Alpha supports CSV, XLSX, and born-digital PDF with manifest metadata.
+Alpha onboarding supports CSV vector ingest into Postgres/pgvector. XLSX and born-digital PDF preview/fixtures exist, but public vector ingest is CSV-only until the connector-to-vector path is wired.
 
 Canonical shape lives in `knowledge_loader/source_contract.py` as `SourceRecord`.
 
@@ -117,19 +117,19 @@ Admin token:
 
 ## Eval And A/B
 
-Golden set: `eval/golden/resolvekit_v0_1.jsonl`.
+Golden set: `eval/golden_set/v3_1_starter.jsonl`.
 
 Runner:
 
 ```bash
-.venv/bin/python -m eval.run --config configs/baseline.yaml --golden eval/golden/resolvekit_v0_1.jsonl --output runs/baseline.jsonl
+bash scripts/ci_golden_eval.sh
 ```
 
-A/B configs live in `configs/ab/`.
+Fresh live result capture, when the local API is running:
 
 ```bash
-.venv/bin/python scripts/materialize_ab_configs.py
-.venv/bin/python scripts/run_ab_stage2_eval.py
+.venv/bin/python scripts/generate_golden_results.py
+bash scripts/ci_golden_eval.sh
 ```
 
 Metrics:

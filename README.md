@@ -1,5 +1,7 @@
 # ResolveKit
 
+**Status:** Public Alpha / Developer Preview. The current stored golden gate passes with zero source-safety hard failures, but ResolveKit is not production-ready for autonomous or unsupervised support use.
+
 ResolveKit is a self-hosted, source-backed support-resolution and support-intelligence framework.
 
 It drafts suggested support replies using approved sources, citations, confidence scoring, validation, traces, feedback, and admin analytics.
@@ -40,6 +42,12 @@ Not target yet:
 
 ## Public Alpha Status
 
+Current release posture:
+
+- Ready for public repository review as an alpha, assuming the tracked tree is secret-scanned before publishing.
+- Not ready for a production launch where users rely on drafts without human review.
+- Next quality target: reduce validation/review warnings, improve source precision, and improve required answer coverage while keeping source-safety hard failures at zero.
+
 | Area | Status | Notes |
 | --- | --- | --- |
 | Suggest-only `/resolve` | Done and tested | `mode: "suggest"` enforced. Unknown request fields rejected. |
@@ -49,11 +57,19 @@ Not target yet:
 | Daily metrics snapshots | Done but not externally validated | API and aggregation exist; real-user metrics need deployment data. |
 | Docker public smoke | Done but not externally validated | `scripts/public_smoke.sh` added; outside clean-machine run still required. |
 | Source preview | Done and tested | Auth, size cap, MIME/suffix allowlist, repo-root path boundary. |
-| Multi-format alpha loaders | Done locally | CSV, XLSX, and born-digital PDF fixtures normalize to `SourceRecord`; DOCX/HTML/OCR remain outside alpha. |
+| Source ingestion | CSV vector ingest ready | Onboarding uploads CSV KBs into Postgres/pgvector. XLSX and born-digital PDF preview/fixtures exist, but public vector ingest is CSV-only for alpha. |
 | 100-case golden set | Partial | Current set is 50+ cases; 100-case target remains open. |
 | Trace viewer UI | Partial | API visibility exists; richer support-ops UI still planned. |
 | Advanced reasoning experiments | Done, default-on as bounded experiment | Typed planner output, query decomposition, evidence table, structured reply rendering, validation upgrades, and trace fields exist behind workflow experiment config. |
 | No-code setup | Planned | Future onboarding layer, not current product identity. |
+
+## Release Readiness
+
+ResolveKit's public-alpha bar is source safety and inspectability, not perfect answer completeness. The current documented state supports a public repo because the release gate passes, customer-facing citation precision is `1.0`, and source-safety hard failures are `0`.
+
+Production use remains gated. Retrieval quality still needs hardening: Recall@3/5 is `0.6596`, source precision is `0.4716`, validation/review warnings are `12`, and deterministic required-point coverage is still low. Treat outputs as reviewable drafts until those quality metrics improve on a broader golden set.
+
+Before publishing the repo, rotate any provider key used during local testing, confirm `.env`/`.env.docker` are not tracked, run a secret scan on the exact tracked contents, and run the Docker smoke path from a clean checkout.
 
 ## Safety Guarantees
 
@@ -216,23 +232,24 @@ Current stored golden-eval report:
 | --- | ---: | --- |
 | Golden cases | 52 | Size of the manually reviewed support-style eval set. |
 | Evaluated results | 52 | Release gate used stored outputs, not schema-only placeholders. |
-| Source-safety hard failures | 0 | No forbidden, raw-ticket, unapproved, or unsupported customer-facing citations. |
-| Recall@1 | 0.4894 | Whether expected evidence was ranked first. |
-| Recall@3 | 0.7021 | Whether expected evidence appeared in the first three sources. |
-| Recall@5 | 0.766 | Whether expected evidence appeared in the first five sources. |
-| MRR | 0.5798 | Whether the first correct source was ranked near the top. |
-| Source precision | 0.2688 | Whether retrieved sources matched expected/allowed sources. |
-| Citation recall | 0.766 | Whether expected evidence was cited in the final answer. |
-| Citation precision | 0.2688 | Whether final citations were expected/allowed. |
-| Required point coverage | n/a | Deterministic check for expected answer content. |
+| Source-safety hard failures | 0 | Forbidden, raw-ticket, unapproved, or unsupported customer-facing citations found by the gate. |
+| Recall@1 | 0.5106 | Whether expected evidence was ranked first. |
+| Recall@3 | 0.6596 | Whether expected evidence appeared in the first three sources. |
+| Recall@5 | 0.6596 | Whether expected evidence appeared in the first five sources. |
+| MRR | 0.5709 | Whether the first correct source was ranked near the top. |
+| Source precision | 0.4716 | Whether retrieved sources matched expected/allowed sources. |
+| Citation recall | 0.1915 | Whether expected evidence was cited in the final answer. |
+| Citation precision | 1 | Whether final citations were expected/allowed. |
+| Required point coverage | 0.0577 | Deterministic check for expected answer content. |
 | Route accuracy | 1 | Whether tickets were classified into the expected support route. |
-| Confidence accuracy | 1 | Whether green/yellow/red confidence matched expected behavior. |
-| Abstention accuracy | 1 | Whether missing-context/review cases abstained correctly. |
-| P50 latency | 8597 ms | Median response-time signal for alpha runs. |
-| P95 latency | 11152.25 ms | Tail response-time signal for alpha runs. |
-| Avg total tokens | n/a | Average prompt+completion tokens per stored result. |
-| Avg cost/query | 0.0005 USD | Cost copied from `/resolve` usage fields. |
-| Total reported LLM cost | 0.024 USD | Total reported cost for the stored golden run. |
+| Confidence accuracy | 0.75 | Whether green/yellow/red confidence matched expected behavior. |
+| Abstention accuracy | 0.7692 | Whether missing-context/review cases abstained correctly. |
+| P50 latency | 728.5 ms | Median response-time signal for alpha runs. |
+| P95 latency | 7805.1 ms | Tail response-time signal for alpha runs. |
+| Avg total tokens | 1885.5 | Average prompt+completion tokens per stored result. |
+| Avg cost/query | 0.0004 USD | Cost copied from `/resolve` usage fields. |
+| Total reported LLM cost | 0.0232 USD | Total reported cost for the stored golden run. |
+| Release profile | public_alpha | Gate profile used for this report. |
 | Release gate passed | True | Current stored-result release gate status. |
 <!-- eval-report:end -->
 
@@ -249,7 +266,15 @@ Rank-aware retrieval metrics are also computed by the golden-eval runner:
 | Token usage and cost/query | Shows whether retrieval keeps per-query context economical. |
 | Validation/review warning count | Shows how often outputs need human review despite avoiding hard safety failures. |
 
-These numbers are intentionally visible during alpha. The current gate passes because source-safety hard failures are zero and evaluated results are present, but source precision, answer validation, and broader golden-set coverage are still active improvement areas.
+These numbers are intentionally visible during alpha. The current gate passes because source-safety hard failures are zero and evaluated results are present, but source precision, answer validation, answer coverage, and broader golden-set coverage are still active improvement areas.
+
+Next release-quality targets:
+
+- keep source-safety hard failures at `0`
+- reduce validation/review warnings from `12` toward fewer than `5`
+- improve source precision from `0.4716` toward at least `0.60`
+- improve Recall@3/5 from `0.6596` toward at least `0.75`
+- improve required-point coverage enough that golden answers include the expected support details, not just safe citations
 
 Live retrieval-arm comparison was run on May 19, 2026 against the local `/resolve` API with 52 golden cases per arm. Current result: keep `current_hybrid_rag` as the baseline/default path. Query decomposition did not improve Recall@3/Recall@5, reduced Recall@1/MRR slightly, and added about 400 ms to median latency in this run.
 
@@ -260,30 +285,12 @@ Live retrieval-arm comparison was run on May 19, 2026 against the local `/resolv
 | Graph-style retrieval-style layer | Disabled/fail-closed experiment arm. |
 | Markdown canonical source + current retrieval | Experiment arm definition only. |
 
-Latest live A/B run summary:
+Historical live A/B note:
 
 - Command: `.venv/bin/python scripts/run_live_ab_eval.py --delay-seconds 2.2`
 - Output: generated locally under `eval/ab/` and intentionally not committed.
-- Note: live-generated result rows currently trigger stricter eval hard-failure accounting than the stored release-gate report. Both arms had the same hard-failure count, so the comparison is still useful for arm ranking, but the release gate remains the stored golden report above until the live-result export contract is tightened.
-
-| Metric | current_hybrid_rag | current_rag_query_decomposition | Delta vs baseline |
-| --- | ---: | ---: | ---: |
-| Evaluated cases | 52 | 52 | 0 |
-| Hard failures | 97 | 97 | 0 |
-| Recall@1 | 0.4468 | 0.4255 | -0.0213 |
-| Recall@3 | 0.7021 | 0.7021 | 0 |
-| Recall@5 | 0.7872 | 0.7872 | 0 |
-| MRR | 0.5674 | 0.5532 | -0.0142 |
-| Source precision | 0.2227 | 0.2223 | -0.0004 |
-| Citation recall | 0.7872 | 0.7872 | 0 |
-| Citation precision | 0.2227 | 0.2223 | -0.0004 |
-| Confidence accuracy | 0.8269 | 0.8269 | 0 |
-| Abstention accuracy | 0.8269 | 0.8269 | 0 |
-| Fallback rate | 0.6538 | 0.6538 | 0 |
-| P50 latency ms | 8645.5 | 9046 | 400.5 |
-| P95 latency ms | 13179.75 | 13117.05 | -62.7 |
-| Avg cost USD | 0.0005 | 0.0005 | 0 |
-| Total cost USD | 0.026165 | 0.026294 | 0.000129 |
+- Note: this table is retained as historical arm-ranking evidence. Current release readiness is represented by the stored golden report above.
+- Previous local A/B evidence kept `current_hybrid_rag` as the default. Rerun the command above after retrieval changes instead of relying on older numeric rows.
 
 ## Project Layout
 
