@@ -703,9 +703,9 @@ def test_phase_3_runtime_config_validation_reports_file_key_problem():
 
 
 def test_phase_4_public_ingest_is_csv_only_static_contract():
-    assert "Public preview ingest supports CSV only" in README_MD
+    assert "Public preview ingest supports CSV and XLSX preview/validation" in README_MD
     assert "demo_data/onboarding/source_manifest_template.csv" in README_MD
-    assert 'CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv"}' in APP_PY
+    assert 'CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv", ".xlsx"}' in APP_PY
     assert "Public preview ingest supports CSV only" in (ROOT / "knowledge_loader" / "kb_loader.py").read_text()
 
 

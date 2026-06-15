@@ -231,7 +231,8 @@ path_pattern='/(Users|private)/'
 key_pattern="sk-"
 key_pattern="${key_pattern}proj-|AI"
 key_pattern="${key_pattern}za"
-private_key_pattern='BEGIN .* PRIVATE KEY'
+private_key_pattern='BEGIN .* PRIVATE'
+private_key_pattern="${private_key_pattern} KEY"
 scan_pattern="${path_pattern}|${key_pattern}|${private_key_pattern}"
 publishable_files="$(git ls-files --cached --others --exclude-standard)"
 if [ -n "$publishable_files" ] && printf '%s\n' "$publishable_files" | xargs rg -n "$scan_pattern" >/tmp/resolvekit_demo_doctor_secret_scan.txt 2>&1; then

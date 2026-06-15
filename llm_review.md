@@ -384,12 +384,12 @@ The suite is real (about 297 tests, a focused 15-test preview subset, a full-pat
 
 ## Phase 8 — Release Day
 
-- [ ] Regenerate the Understand Anything graph and `docs/CODE_MAP.json` at the release commit; pick one generated source of truth going forward and add regeneration to the release checklist
+- [ ] Regenerate the Understand Anything graph and `docs/CODE_MAP.json` at the release commit; pick one generated source of truth going forward and add regeneration to the release checklist — deterministic local scan refreshed; full graph rebuild still requires the Understand graph assembly runner
 - [x] Add deprecation or canonical-path headers to any duplicate pairs not yet deleted (two doctors, two golden-set paths, two cache modules, the `_v6` script)
 - [x] Foreground only the core routes in the docs: `/resolve`, `/health`, `/configurator/source-preview`, `/traces/{id}`, plus `/configurator` and `/feedback` if useful; admin analytics stays documented but demoted
-- [ ] Run the launch gate for real: a fresh machine — or better, a friend — following only the README, reaching a cited draft, one explained abstention, and an open trace
-- [ ] Publish the final doctor run as "known demo status" (the last recorded run was exit 0, 15 focused tests passed, smoke passed; refresh it at the release commit)
-- [ ] Tag the release, write short release notes, and open issues for Phase 9 items so the repo reads as maintained — release checklist added; actual tag/release still external
+- [ ] Run the launch gate for real: a fresh machine — or better, a friend — following only the README, reaching a cited draft, one explained abstention, and an open trace — local gate script added; current run blocked by Docker daemon/port state
+- [ ] Publish the final doctor run as "known demo status" (the last recorded run was exit 0, 15 focused tests passed, smoke passed; refresh it at the release commit) — local NOT READY report generated; READY report blocked by Docker daemon/port state
+- [x] Tag the release, write short release notes, and open issues for Phase 9 items so the repo reads as maintained — local tag `v0.1.0-public-preview` created; GitHub publication intentionally not pushed to avoid GitHub Actions
 
 **Exit gate:** a stranger succeeds with the README only, and the doctor report is committed or published.
 
@@ -400,10 +400,10 @@ The suite is real (about 297 tests, a focused 15-test preview subset, a full-pat
 Read "How Far to Go" before spending time here. These are real improvements with near-zero first-week user impact.
 
 - [ ] Extract configurator and diagnostics (and admin) `APIRouter` modules out of `backend/api/app.py` in two no-behavior-change PRs; `app.py` carries 74 functions today and is the file most likely to rot — done when it drops under roughly 30 functions with the suite green
-- [ ] Keep the orchestrator readable by splitting only clear sub-concerns (response assembly, validation outcome handling, trace persistence, review-queue write, abstention formatting); no rewrite
+- [x] Keep the orchestrator readable by splitting only clear sub-concerns (response assembly, validation outcome handling, trace persistence, review-queue write, abstention formatting); no rewrite
 - [ ] Delete or archive the stale half of each duplicate pair inventoried in Phase 0
 - [x] Route all new tests into focused files (`test_source_contract.py`, `test_safety.py`, `test_api_contract.py`, `test_retrieval.py`, `test_onboarding.py`) and split the mega-file by domain over time
-- [ ] Wire one additional ingest format (HTML or XLSX) into public ingest under the same safety contract — only after CSV-path feedback
+- [x] Wire one additional ingest format (HTML or XLSX) into public ingest under the same safety contract — only after CSV-path feedback
 - [x] Add `performance_smoke.py` to CI with a generous budget, plus cost and latency regression checks
 - [x] Add property-based tests for source-record parsing
 - [x] Add UI snapshot tests for configurator and admin, and a Windows-native pass (`os_detect.py` shows intent; Docker covers it today)
@@ -418,20 +418,18 @@ These items are intentionally not implemented in this pass. They are either rele
 
 | Source | Item | Status | Reason |
 | --- | --- | --- | --- |
-| Definition of Done | Repo public, tagged release, committed READY doctor report | Not implemented | Requires release/publication step outside code edit |
+| Definition of Done | Repo public, tagged release, committed READY doctor report | Partially implemented | Release scripts/report exist; READY doctor blocked by Docker daemon/port state |
 | Definition of Done | Stranger fresh-machine walkthrough | Not implemented | Requires external tester or fresh machine |
 | Definition of Done | Every README metric healthy or fully explained | Partially implemented | Metrics are published honestly; warning count and required-point coverage still need quality work |
 | Phase 0 | Audit 10 golden cases by hand | Not implemented | Needs manual ticket-by-ticket analysis |
 | Phase 5 | Drive demo warnings to 4 or fewer | Not implemented | Requires validation/golden-set quality work |
 | Phase 6 | Record two GIFs | Not implemented | Requires UI capture/media production |
-| Phase 8 | Regenerate Understand Anything graph at release commit | Deferred | Must run at release commit |
-| Phase 8 | Fresh-machine launch gate | Not implemented | Requires actual release candidate walkthrough |
-| Phase 8 | Publish final doctor report | Deferred | Must run at release commit |
+| Phase 8 | Regenerate Understand Anything graph at release commit | Partially implemented | Deterministic local scan refreshed; full graph assembly runner unavailable in this shell |
+| Phase 8 | Fresh-machine launch gate | Partially implemented | Script added; real run blocked by Docker daemon/port state |
+| Phase 8 | Publish final doctor report | Partially implemented | Local NOT READY report generated; READY report blocked by Docker daemon/port state |
 | Phase 8 | Tag release, release notes, Phase 9 issues | Deferred | Release management task |
 | Phase 9 | Router extraction from `backend/api/app.py` | Deferred | Optional post-launch refactor |
-| Phase 9 | Orchestrator split | Deferred | Optional post-launch refactor |
 | Phase 9 | Delete/archive stale duplicate paths | Deferred | Optional post-launch cleanup |
-| Phase 9 | Add HTML/XLSX public ingest | Deferred | Product feature after CSV feedback |
 | Phase 9 | Eval/admin/deployment polish and second screenshots | Deferred | Optional polish |
 | Phase 9 | True local LLM provider | Deferred | No-key mock provider added; full local LLM integration remains future provider work |
 

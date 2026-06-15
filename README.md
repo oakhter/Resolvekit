@@ -107,7 +107,7 @@ ResolveKit takes a support ticket, retrieves approved knowledge, drafts a sugges
 Ticket -> Retrieval Plan -> Approved Sources -> Rerank -> Evidence Bundle -> Draft -> Validate -> Confidence -> Trace/Review
 ```
 
-**Public preview ingest supports CSV only.** Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
+**Public preview ingest supports CSV and XLSX preview/validation; vector load remains CSV-first.** Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
 
 ## What This Is
 

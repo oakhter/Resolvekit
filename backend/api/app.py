@@ -34,6 +34,7 @@ from backend.core.logger import get_logger, enable_app_log
 from backend.core.replay import replay_saved_trace
 from backend.db.schema import ensure_vector_schema, ensure_ops_schema
 from backend.db.schema import _safe_schema_name
+from backend.api.routers.health import router as health_router
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 import zipfile
@@ -100,6 +101,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(health_router)
 
 # ── UI Files ─────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -298,8 +300,9 @@ CONFIGURATOR_SOURCE_PREVIEW_MIME_ALLOWLIST = {
     "text/csv",
     "application/csv",
     "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
-CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv"}
+CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv", ".xlsx"}
 DIAGNOSTIC_CHECKS = {
     "app_runtime": {
         "name": "App Runtime",
@@ -742,31 +745,6 @@ def _actor_metadata(request: Request, body: BaseModel) -> dict:
         "team_id": getattr(body, "team_id", "") or request.headers.get("x-resolvekit-team", ""),
         "session_id": getattr(body, "session_id", "") or request.headers.get("x-resolvekit-session", ""),
         "user_token_hash": token_hash,
-    }
-
-
-# ── Health Check ─────────────────────────────────────────────
-@app.get("/health")
-def health():
-    db_reachable = False
-    kb_present = False
-    try:
-        with psycopg2.connect(config.DATABASE_URL, connect_timeout=2) as conn:
-            db_reachable = True
-            schema = _safe_schema_name(config.KNOWLEDGE_SCHEMA)
-            with conn.cursor() as cur:
-                cur.execute(f'SET search_path TO "{schema}", public;')
-                cur.execute("SELECT COUNT(*) FROM knowledge_base_identifier")
-                kb_present = int(cur.fetchone()[0] or 0) > 0
-    except Exception:
-        db_reachable = False
-    return {
-        "status": "ok",
-        "service": "ResolveKit",
-        "version": "1.0.0",
-        "db_reachable": db_reachable,
-        "provider_configured": bool(config.OPENAI_API_KEY if config.ACTIVE_PROVIDER == "openai" else config.GEMINI_API_KEY),
-        "kb_present": kb_present,
     }
 
 

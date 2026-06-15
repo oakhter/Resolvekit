@@ -93,7 +93,7 @@ Provider matrix:
 
 ## Source Contract
 
-Alpha onboarding supports CSV vector ingest into Postgres/pgvector. XLSX and born-digital PDF preview/fixtures exist, but public vector ingest is CSV-only until the connector-to-vector path is wired.
+Alpha onboarding supports CSV vector ingest into Postgres/pgvector. XLSX is public-preview supported for source-contract validation and configurator preview; vector ingest remains CSV-first until the connector-to-vector path is wired. Born-digital PDF fixtures remain preview work only.
 
 Canonical shape lives in `knowledge_loader/source_contract.py` as `SourceRecord`.
 
