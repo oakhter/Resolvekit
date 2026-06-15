@@ -589,6 +589,385 @@ APP_PY = (ROOT / "backend" / "api" / "app.py").read_text()
 TICKET_INDEX = (ROOT / "frontend" / "ticket" / "index.html").read_text()
 ORCHESTRATOR_CACHE_PY = (ROOT / "pipeline" / "orchestrator_cache.py").read_text()
 ORCHESTRATOR_PY = (ROOT / "backend" / "core" / "orchestrator.py").read_text()
+DOCKER_COMPOSE = (ROOT / "docker-compose.yml").read_text()
+DOCKERFILE = (ROOT / "Dockerfile").read_text()
+README_MD = (ROOT / "README.md").read_text()
+TECHNICAL_MD = (ROOT / "docs" / "TECHNICAL.md").read_text()
+
+
+def test_phase_1_start_py_defaults_to_loopback():
+    assert 'APP_BIND_HOST = os.getenv("APP_BIND_HOST", "127.0.0.1")' in START_PY
+    assert '"--host", APP_BIND_HOST' in START_PY
+    assert '"--host", "0.0.0.0"' not in START_PY
+
+
+def test_phase_1_docker_publish_ports_are_loopback_only():
+    assert '"127.0.0.1:8000:8000"' in DOCKER_COMPOSE
+    assert '"127.0.0.1:8765:8765"' in DOCKER_COMPOSE
+    assert 'BIND_HOST=${BIND_HOST:-127.0.0.1}' in DOCKERFILE
+
+
+def test_phase_1_doctor_checks_loopback_exposure_and_key_strength():
+    doctor = (ROOT / "scripts" / "demo_doctor.sh").read_text()
+
+    assert "Loopback exposure" in doctor
+    assert "0.0.0.0" in doctor
+    assert "Key strength" in doctor
+    assert "at least 12 characters" in doctor
+
+
+def test_operational_secret_validation_rejects_empty_placeholder_and_shared_values():
+    with pytest.raises(ValueError, match="API_KEY"):
+        config.validate_operational_secrets({
+            "API_KEY": "",
+            "CONFIGURATOR_API_KEY": "admin-secret",
+            "VIEWER_TOKEN": "viewer-secret",
+            "CONFIGURATOR_ADMIN_TOKEN": "config-admin-secret",
+        })
+    with pytest.raises(ValueError, match="CONFIGURATOR_API_KEY"):
+        config.validate_operational_secrets({
+            "API_KEY": "viewer-secret",
+            "CONFIGURATOR_API_KEY": "change-me-configurator",
+            "VIEWER_TOKEN": "trace-viewer-secret",
+            "CONFIGURATOR_ADMIN_TOKEN": "config-admin-secret",
+        })
+    with pytest.raises(ValueError, match="must not share"):
+        config.validate_operational_secrets({
+            "API_KEY": "same-secret",
+            "CONFIGURATOR_API_KEY": "same-secret",
+            "VIEWER_TOKEN": "viewer-secret",
+            "CONFIGURATOR_ADMIN_TOKEN": "config-admin-secret",
+        })
+
+
+def test_operational_secret_validation_accepts_distinct_strong_values():
+    config.validate_operational_secrets({
+        "API_KEY": "viewer-secret-123",
+        "CONFIGURATOR_API_KEY": "configurator-secret-123",
+        "VIEWER_TOKEN": "trace-viewer-secret-123",
+        "CONFIGURATOR_ADMIN_TOKEN": "admin-secret-123",
+    })
+
+
+def test_phase_1_auth_diagnostic_fails_for_placeholder_keys(monkeypatch):
+    monkeypatch.setattr(config, "API_KEY", "change-me")
+    monkeypatch.setattr(config, "CONFIGURATOR_API_KEY", "change-me-configurator")
+    monkeypatch.setattr(config, "VIEWER_TOKEN", "change-me")
+    monkeypatch.setattr(config, "CONFIGURATOR_ADMIN_TOKEN", "change-me-configurator")
+
+    result = run_diagnostic_check("auth_config")
+
+    assert result["status"] == "fail"
+    assert "placeholder" in result["message"].lower()
+
+
+def test_phase_3_resolved_config_files_report_absolute_paths_and_sources():
+    files = project_config.resolved_config_files()
+
+    assert set(files) == {"products", "sources", "output", "retrieval_policy", "workflow"}
+    for item in files.values():
+        assert Path(item["active_path"]).is_absolute()
+        assert Path(item["example_path"]).is_absolute()
+        assert item["source"] in {"local", "example", "default"}
+
+
+def test_phase_3_retrieval_diagnostic_includes_resolved_config_paths():
+    result = run_diagnostic_check("retrieval_pipeline")
+
+    assert "config_files" in result["details"]
+    assert "retrieval_policy" in result["details"]["config_files"]
+
+
+def test_phase_2_readme_contains_security_privacy_and_quickstart_contract():
+    assert "Do not load private customer data into a public or shared instance." in README_MD
+    assert "local-first doesn't mean offline" in README_MD
+    assert "Exposing beyond localhost exposes traces and admin analytics." in README_MD
+    assert "What This Is" in README_MD
+    assert "What This Is Not" in README_MD
+    assert "You're set up when:" in README_MD
+    assert "`mode: \"suggest\"`" in README_MD
+
+
+def test_phase_3_docs_include_config_map_and_reload_semantics():
+    assert "| File / Surface | Purpose | User Should Edit? | Takes Effect |" in README_MD
+    assert "| Runtime file | Applies | Reload behavior |" in TECHNICAL_MD
+
+
+def test_phase_3_runtime_config_validation_reports_file_key_problem():
+    result = project_config.validate_runtime_config_files()
+
+    assert result["valid"] is True
+    assert set(result["files"]) == {"products", "sources", "output", "retrieval_policy", "workflow"}
+    for item in result["files"].values():
+        assert Path(item["path"]).is_absolute()
+
+
+def test_phase_4_public_ingest_is_csv_only_static_contract():
+    assert "Public preview ingest supports CSV only" in README_MD
+    assert "demo_data/onboarding/source_manifest_template.csv" in README_MD
+    assert 'CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv"}' in APP_PY
+    assert "Public preview ingest supports CSV only" in (ROOT / "knowledge_loader" / "kb_loader.py").read_text()
+
+
+def test_phase_4_source_fixtures_and_validator_exist():
+    from knowledge_loader.source_contract import source_validation_report
+
+    valid = ROOT / "demo_data" / "csv" / "minimal_valid_kb.csv"
+    invalid = ROOT / "demo_data" / "csv" / "invalid_examples" / "missing_is_approved.csv"
+    report = source_validation_report([valid])
+    bad_report = source_validation_report([invalid])
+
+    assert report["counts_by_format"]["csv"]["loaded"] == 3
+    assert bad_report["validation_errors"]
+    assert (ROOT / "scripts" / "validate_sources.py").exists()
+    assert (ROOT / "demo_data" / "pdf" / "PREVIEW_ONLY.md").exists()
+    assert (ROOT / "demo_data" / "xlsx" / "PREVIEW_ONLY.md").exists()
+
+
+def test_phase_4_truth_table_and_reingestion_docs_present():
+    assert "Source eligibility truth table" in TECHNICAL_MD
+    assert "re-running ingest on a changed file" in TECHNICAL_MD
+    assert "`is_approved` | `is_active` | `is_customer_facing_allowed`" in TECHNICAL_MD
+
+
+def test_phase_4_every_source_eligibility_combination_is_locked():
+    from knowledge_loader.source_contract import SourceRecord, chunk_source_records
+
+    records = []
+    for approved in (True, False):
+        for active in (True, False):
+            for customer in (True, False):
+                records.append(SourceRecord(
+                    source_id=f"src_{approved}_{active}_{customer}",
+                    source_title="Eligibility",
+                    source_type="csv",
+                    source_uri="memory.csv",
+                    source_authority="canonical",
+                    is_approved=approved,
+                    is_active=active,
+                    is_customer_facing_allowed=customer,
+                    approved_at="2026-01-01",
+                    reviewed_by="support_ops",
+                    needs_review_at="2027-01-01",
+                    doc_type="faq",
+                    product_area="login",
+                    issue_class="password_reset",
+                    version_scope="v1",
+                    escalation_risk="low",
+                    body="This source has enough words to create one eligible chunk for testing.",
+                ))
+
+    chunks, report = chunk_source_records(records)
+
+    assert len(chunks) == 1
+    assert chunks[0].source_id == "src_True_True_True"
+    assert report["skipped_inactive_or_empty"] == 7
+
+
+def test_phase_7_fail_closed_retrieval_metadata_guard():
+    assert retriever._missing_safety_metadata({"id": "chunk_missing_flags"}) is True
+    assert retriever._missing_safety_metadata({
+        "source_id": "s1",
+        "source_type": "csv",
+        "source_category": "knowledge_base",
+        "tier": "approved",
+        "source_ref": "s1",
+        "lineage_ref": "lineage",
+        "reviewed_by": "support_ops",
+        "approved_at": "2026-01-01",
+        "audience_allowed": ["customer"],
+        "is_customer_facing_allowed": True,
+        "is_internal_only": False,
+        "is_future_only": False,
+        "source_url": "https://example.test",
+        "document_hash": "doc",
+        "chunk_hash": "chunk",
+        "updated_at": "2026-01-01",
+        "redaction_status": "redacted",
+        "redaction_applied": True,
+        "ingested_at": "2026-01-01",
+        "loader_version": "test",
+        "config_hash": "cfg",
+        "disabled": False,
+        "source_authority": 1.0,
+        "condition_flags": ["none"],
+    }) is False
+
+
+def test_phase_1_named_fail_closed_source_contract_safety_fields():
+    from knowledge_loader.source_contract import source_validation_report
+
+    fixtures = {
+        "is_approved": ROOT / "demo_data" / "csv" / "invalid_examples" / "missing_is_approved.csv",
+        "is_active": ROOT / "demo_data" / "csv" / "invalid_examples" / "inactive_source.csv",
+        "is_customer_facing_allowed": ROOT / "demo_data" / "csv" / "invalid_examples" / "internal_only_source.csv",
+    }
+
+    missing_report = source_validation_report([fixtures["is_approved"]])
+    assert any("is_approved" in error["message"] for error in missing_report["validation_errors"])
+
+    for field_name in ("is_active", "is_customer_facing_allowed"):
+        report = source_validation_report([fixtures[field_name]])
+        assert report["counts_by_format"]["csv"]["loaded"] == 1
+        assert report["counts_by_format"]["csv"]["chunked"] == 0
+
+
+def test_phase_1_raw_ticket_source_policy_and_evidence_ban():
+    candidate = {
+        "id": "raw_1",
+        "source_id": "historical_tickets:T-1",
+        "source_type": "raw_ticket_history",
+        "rrf_score": 9.0,
+        "source_authority": 1.0,
+    }
+
+    scored = score_candidate_with_policy(candidate, "general")
+
+    assert scored["policy_disallowed"] is True
+    assert scored["policy_score"] == -1.0
+
+
+def test_phase_1_kb_scraper_is_explicitly_experimental_and_excluded():
+    scraper = (ROOT / "knowledge_loader" / "kb_scraper.py").read_text()
+
+    assert "Experimental/offline helper only" in scraper
+    assert "excluded from the public preview ingest" in scraper
+
+
+def test_phase_5_doctor_has_fix_lines_config_paths_and_source_preview():
+    doctor = (ROOT / "scripts" / "demo_doctor.sh").read_text()
+    makefile = (ROOT / "Makefile").read_text()
+
+    assert "Fix:" in doctor
+    assert "Resolved config paths" in doctor
+    assert "Source preview dry run" in doctor
+    assert "reset-demo:" in makefile
+    assert "reload-kb:" in makefile
+    assert "Common Failures" in README_MD
+    assert "Logs live under" in README_MD
+
+
+def test_phase_0_audit_evidence_document_exists():
+    audit = (ROOT / "docs" / "PHASE0_AUDIT.md").read_text()
+
+    for heading in [
+        "Golden Metrics",
+        "Network Defaults",
+        "Key Handling",
+        "Field Enforcement",
+        "Demo Data Hygiene",
+        "Demo Ticket Realism",
+        "Schema Version Marker",
+        "Trace Rerank Scores",
+        "Warning Triage",
+        "Duplicate/Stale Inventory",
+    ]:
+        assert heading in audit
+
+
+def test_phase_6_ticket_ui_shows_trust_controls_and_human_readable_citations():
+    assert "Confidence band:" in TICKET_INDEX
+    assert "why this draft" in TICKET_INDEX
+    assert "abstention_reason" in TICKET_INDEX
+    assert "suggested_next_action" in TICKET_INDEX
+    assert "product_area" in TICKET_INDEX
+    assert "why_eligible" in TICKET_INDEX
+    assert "Trace walkthrough" in (ROOT / "docs" / "DEMO.md").read_text()
+
+
+def test_phase_6_review_queue_remains_visible_as_human_review_proof():
+    assert "review queue rows" in TECHNICAL_MD
+    assert "Human review required before any customer response" in README_MD
+
+
+def test_phase_7_launch_gates_and_ci_exist():
+    workflow = ROOT / ".github" / "workflows" / "public-preview.yml"
+    assert workflow.exists()
+    text = workflow.read_text()
+    assert "scripts/public_smoke.sh" in text
+    assert "phase_7" in text
+    assert "citation precision" in (ROOT / "scripts" / "ci_golden_eval.sh").read_text().lower()
+
+
+def test_phase_7_support_bundle_redacts_configured_secrets(monkeypatch):
+    from backend.api import app as app_module
+
+    monkeypatch.setattr(config, "API_KEY", "rk_secret_viewer_12345")
+    payload = {"nested": ["before rk_secret_viewer_12345 after"]}
+
+    redacted = app_module._redact_export_value(payload)
+
+    assert "rk_secret_viewer_12345" not in str(redacted)
+    assert "[REDACTED_SECRET]" in str(redacted)
+
+
+def test_phase_7_fast_follow_golden_retrieval_has_stable_source_ids():
+    golden = ROOT / "eval" / "golden_set" / "v3_1_starter.jsonl"
+    rows = [json.loads(line) for line in golden.read_text().splitlines() if line.strip()]
+
+    assert rows
+    assert any(row.get("expected_sources") or row.get("expected_source_ids") for row in rows)
+
+
+def test_phase_7_fast_follow_minimal_and_invalid_fixtures_match_preview_examples():
+    from knowledge_loader.source_contract import source_validation_report
+
+    valid = source_validation_report([ROOT / "demo_data" / "csv" / "minimal_valid_kb.csv"])
+    invalid_dir = ROOT / "demo_data" / "csv" / "invalid_examples"
+    invalid = source_validation_report(sorted(invalid_dir.glob("*.csv")))
+
+    assert valid["counts_by_format"]["csv"]["loaded"] == 3
+    assert valid["counts_by_format"]["csv"]["chunked"] == 3
+    assert invalid["counts_by_format"]["csv"]["rejected"] >= 6
+
+
+def test_phase_7_fast_follow_citation_format_and_trace_link_ui_contract():
+    assert "source_title" in TICKET_INDEX
+    assert "product_area" in TICKET_INDEX
+    assert "why_eligible" in TICKET_INDEX
+    assert "why this draft" in TICKET_INDEX
+    assert "/traces/${encodeURIComponent(resolution.trace_id)}" in TICKET_INDEX
+
+
+def test_phase_7_fast_follow_config_reload_and_provider_validation_contracts():
+    validation_result = project_config.validate_runtime_config_files()
+
+    assert validation_result["valid"] is True
+    assert "validate_operational_secrets" in (ROOT / "backend" / "core" / "config.py").read_text()
+    assert "| Runtime file | Applies | Reload behavior |" in TECHNICAL_MD
+    assert "model_warmup" in README_MD
+
+
+def test_phase_7_fast_follow_port_conflict_handling_is_documented_and_doctored():
+    doctor = (ROOT / "scripts" / "demo_doctor.sh").read_text()
+
+    assert "Port 8000/8765 in use" in README_MD
+    assert "port" in doctor.lower()
+
+
+def test_phase_7_fast_follow_direct_reranker_and_confidence_tests(monkeypatch):
+    from pipeline import reranker
+    from pipeline.confidence import compute_scorer_result
+
+    class FakeCrossEncoder:
+        def predict(self, pairs, batch_size=32):
+            return [1.0, 3.0]
+
+    monkeypatch.setattr(reranker, "_get_cross_encoder", lambda: FakeCrossEncoder())
+    context = {
+        "search_query": "reset password",
+        "retrieved_chunks": [
+            approved_chunk(id="low", content="Adjacent account setup guidance.", source_authority=1.0),
+            approved_chunk(id="high", content="Reset your password from account settings.", source_authority=1.0),
+        ],
+        "route_hints": {"top_k_rerank": 1},
+    }
+
+    reranked = reranker.run(context)
+    assert reranked["top_chunks"][0]["id"] == "high"
+
+    score = compute_scorer_result(reranked["top_chunks"], evidence_bundle=EvidenceBundle.from_chunks(reranked["top_chunks"]))
+    assert score.confidence_band in {"red", "yellow", "green"}
 
 
 def test_route_policy_unknown_route_returns_general():
@@ -1728,6 +2107,52 @@ def test_onboarding_load_knowledge_uses_noninteractive_all(monkeypatch):
     assert calls == [[onboarding_tasks._python(), "knowledge_loader/kb_loader.py", "--all"]]
 
 
+def test_onboarding_status_flags_placeholders_and_default_db(tmp_path, monkeypatch):
+    from scripts import onboarding_tasks
+
+    env_file = tmp_path / ".env.docker"
+    env_file.write_text(
+        "\n".join([
+            "ACTIVE_PROVIDER=openai",
+            "OPENAI_API_KEY=replace-with-provider-key",
+            "API_KEY=change-me",
+            "CONFIGURATOR_API_KEY=change-me-configurator",
+            "DATABASE_URL=postgresql://resolvekit:resolvekit@db:5432/resolvekit",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(onboarding_tasks, "ENV_PATH", env_file)
+    monkeypatch.setattr(onboarding_tasks, "CONTAINER_MODE", True)
+
+    status = onboarding_tasks.system_status()
+
+    assert status["provider_key_placeholder"] is True
+    assert status["viewer_token_placeholder"] is True
+    assert status["admin_token_placeholder"] is True
+    assert status["default_database_credentials"] is True
+
+
+def test_onboarding_reset_task_clears_local_uploads_and_configs(tmp_path, monkeypatch):
+    from scripts import onboarding_tasks
+
+    uploads = tmp_path / "demo_data" / "onboarding" / "uploads"
+    uploads.mkdir(parents=True)
+    (uploads / "source.csv").write_text("title,content\nA,B\n", encoding="utf-8")
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "sources.yaml").write_text("local: true\n", encoding="utf-8")
+    monkeypatch.setattr(onboarding_tasks, "ROOT", tmp_path)
+    monkeypatch.setattr(onboarding_tasks, "UPLOAD_DIR", uploads)
+    monkeypatch.setattr(onboarding_tasks, "CONTAINER_MODE", True)
+
+    result = onboarding_tasks.reset_demo_state()
+
+    assert result["ok"] is True
+    assert not uploads.exists()
+    assert not (config_dir / "sources.yaml").exists()
+    assert "docker compose down" in result["hint"]
+
+
 def test_onboarding_vector_ingest_accepts_csv_only(tmp_path):
     from scripts import onboarding_tasks
 
@@ -1751,6 +2176,66 @@ def test_onboarding_upload_ui_describes_csv_vector_ingest():
     assert 'accept=".csv"' in html
     assert "CSV knowledge files" in html
     assert "XLSX" not in html.split("function renderSources()", 1)[1].split("function uploadSources()", 1)[0]
+
+
+def test_onboarding_ui_is_numbered_walkthrough():
+    html = Path("frontend/onboarding/index.html").read_text(encoding="utf-8")
+
+    for label in [
+        "1. System",
+        "2. Provider",
+        "3. Knowledge",
+        "4. First draft",
+        "5. Open app",
+    ]:
+        assert label in html
+    assert "What happened" in html
+    assert "Open Ticket UI" in html
+    assert "Open Admin" in html
+    assert "Reset local demo" in html
+
+
+def test_demo_doctor_script_contract():
+    script = Path("scripts/demo_doctor.sh")
+    assert script.exists()
+    text = script.read_text(encoding="utf-8")
+
+    assert "ResolveKit Demo Doctor" in text
+    assert "diagnostics/demo_doctor/latest.json" in text
+    assert "diagnostics/demo_doctor/latest.md" in text
+    assert "Demo readiness:" in text
+    assert "Production readiness:" in text
+    assert "scripts/public_smoke.sh" in text
+    assert "scripts/ci_golden_eval.sh" in text
+    assert "OPENAI_API_KEY" not in text
+    assert "GEMINI_API_KEY" not in text
+
+
+def test_makefile_doctor_runs_demo_doctor_script():
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "doctor:" in makefile
+    assert "./scripts/demo_doctor.sh" in makefile
+
+
+def test_demo_doctor_reports_are_ignored():
+    gitignore = Path(".gitignore").read_text(encoding="utf-8")
+
+    assert "diagnostics/demo_doctor/*" in gitignore
+    assert "!diagnostics/demo_doctor/.gitkeep" in gitignore
+
+
+def test_readme_is_short_and_transparent_for_public_demo():
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert len(readme.splitlines()) <= 250
+    assert "Demo readiness" in readme
+    assert "Production readiness" in readme
+    assert "AI Transparency And Ethics" in readme
+    assert "support-facing RAG starter kit" in readme
+    assert "make doctor" in readme
+    assert "public alpha gate" not in readme.lower()
+    assert "Release gate" not in readme
 
 
 def test_kb_loader_all_flag_skips_interactive_selection():
@@ -2810,14 +3295,16 @@ def test_eval_report_builder_writes_markdown_and_updates_readme(tmp_path):
     }
     markdown = build_markdown(report)
     assert "Recall@1" in markdown
-    assert "Release profile" in markdown
+    assert "Readiness profile" in markdown
+    assert "Release profile" not in markdown
     block = build_readme_block(report)
     assert "eval-report:start" in block
-    assert "Release profile" in block
+    assert "Demo readiness" in block
+    assert "Release profile" not in block
     readme = tmp_path / "README.md"
     readme.write_text("Current stored golden-eval report:\n\nold\n")
     update_readme(readme, block)
-    assert "Avg cost/query" in readme.read_text()
+    assert "Total eval cost" in readme.read_text()
 
 
 # --- source freshness tests ---

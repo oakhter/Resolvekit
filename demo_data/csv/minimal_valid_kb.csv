@@ -1,0 +1,4 @@
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+kb_001,Password Reset Guide,csv,canonical,true,true,true,2026-01-01,support_ops,2027-01-01,faq,login,password_reset,v1,low,Customers can reset passwords from account settings after verifying email ownership.
+kb_002,Mobile Login Troubleshooting,csv,approved,true,true,true,2026-01-01,support_ops,2027-01-01,troubleshooting,mobile,login_issue,v1,medium,Mobile login failures after role changes should be checked against permissions and app version.
+kb_003,Billing Export Policy,csv,canonical,true,true,true,2026-01-01,support_ops,2027-01-01,policy,billing,data_export,v1,medium,Data exports are available to admins and compliance managers from the billing workspace.

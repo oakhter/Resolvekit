@@ -1,5 +1,8 @@
 """
-kb_scraper.py — Knowledge Base Scraper
+kb_scraper.py — Experimental Knowledge Base Scraper
+
+Experimental/offline helper only. It is excluded from the public preview ingest
+path, which supports CSV files validated through source_contract.py.
 
 Scrapes articles from a Salesforce Community site.
 Filters by product, saves to CSV, caches article list, supports resume.

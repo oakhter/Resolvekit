@@ -41,8 +41,8 @@ def build_markdown(report: dict[str, Any]) -> str:
         _row("Evaluated results", report.get("evaluated_result_count"), "Stored outputs evaluated by the release gate."),
         _row("Schema valid", report.get("schema_valid"), "Golden-set contract validity."),
         _row("Hard safety failures", report.get("hard_failure_count"), "Forbidden, raw, unapproved, or unsupported citations."),
-        _row("Release profile", gate.get("profile") if gate else None, "Gate profile used for this report."),
-        _row("Release gate passed", gate.get("passed") if gate else None, "Public-alpha gate status."),
+        _row("Readiness profile", gate.get("profile") if gate else None, "Evaluation profile used for this report."),
+        _row("Demo readiness passed", gate.get("passed") if gate else None, "Developer-preview readiness status."),
         "",
         "## Retrieval",
         "| Metric | Result | Notes |",
@@ -80,10 +80,10 @@ def build_markdown(report: dict[str, Any]) -> str:
         _row("Total cost", report.get("total_cost_usd"), "Total reported LLM cost for the stored run.", " USD"),
     ]
     if gate.get("warnings"):
-        lines.extend(["", "## Release Warnings"])
+        lines.extend(["", "## Readiness Warnings"])
         lines.extend(f"- {warning}" for warning in gate["warnings"])
     if gate.get("blockers"):
-        lines.extend(["", "## Release Blockers"])
+        lines.extend(["", "## Readiness Blockers"])
         lines.extend(f"- {blocker}" for blocker in gate["blockers"])
     return "\n".join(lines) + "\n"
 
@@ -92,29 +92,18 @@ def build_readme_block(report: dict[str, Any]) -> str:
     gate = report.get("release_gate") or {}
     lines = [
         README_START,
-        "| Metric | Current Alpha Result | What It Proves |",
-        "| --- | ---: | --- |",
-        _row("Golden cases", report.get("case_count"), "Size of the manually reviewed support-style eval set."),
-        _row("Evaluated results", report.get("evaluated_result_count"), "Release gate used stored outputs, not schema-only placeholders."),
-        _row("Source-safety hard failures", report.get("hard_failure_count"), "Forbidden, raw-ticket, unapproved, or unsupported customer-facing citations found by the gate."),
-        _row("Recall@1", report.get("retrieval_recall_at_1"), "Whether expected evidence was ranked first."),
-        _row("Recall@3", report.get("retrieval_recall_at_3"), "Whether expected evidence appeared in the first three sources."),
-        _row("Recall@5", report.get("retrieval_recall_at_5"), "Whether expected evidence appeared in the first five sources."),
-        _row("MRR", report.get("mean_reciprocal_rank"), "Whether the first correct source was ranked near the top."),
-        _row("Source precision", report.get("source_precision"), "Whether retrieved sources matched expected/allowed sources."),
-        _row("Citation recall", report.get("citation_recall"), "Whether expected evidence was cited in the final answer."),
-        _row("Citation precision", report.get("citation_precision"), "Whether final citations were expected/allowed."),
-        _row("Required point coverage", report.get("required_point_coverage"), "Deterministic check for expected answer content."),
-        _row("Route accuracy", report.get("route_accuracy"), "Whether tickets were classified into the expected support route."),
-        _row("Confidence accuracy", report.get("confidence_band_accuracy"), "Whether green/yellow/red confidence matched expected behavior."),
-        _row("Abstention accuracy", report.get("abstention_accuracy"), "Whether missing-context/review cases abstained correctly."),
-        _row("P50 latency", report.get("p50_latency_ms"), "Median response-time signal for alpha runs.", " ms"),
-        _row("P95 latency", report.get("p95_latency_ms"), "Tail response-time signal for alpha runs.", " ms"),
-        _row("Avg total tokens", report.get("avg_total_tokens"), "Average prompt+completion tokens per stored result."),
-        _row("Avg cost/query", report.get("avg_cost_usd"), "Cost copied from `/resolve` usage fields.", " USD"),
-        _row("Total reported LLM cost", report.get("total_cost_usd"), "Total reported cost for the stored golden run.", " USD"),
-        _row("Release profile", gate.get("profile") if gate else None, "Gate profile used for this report."),
-        _row("Release gate passed", gate.get("passed") if gate else None, "Current stored-result release gate status."),
+        "| Metric | Current value |",
+        "| --- | ---: |",
+        f"| Demo readiness | {'passed' if gate.get('passed') else 'not ready'} |",
+        f"| Golden cases | {_display(report.get('case_count'))} |",
+        f"| Source-safety hard failures | {_display(report.get('hard_failure_count'))} |",
+        f"| Validation/review warnings | {_display(report.get('validation_failure_count'))} |",
+        f"| Recall@3/5 | {_display(report.get('retrieval_recall_at_3'))} |",
+        f"| Source precision | {_display(report.get('source_precision'))} |",
+        f"| Citation precision | {_display(report.get('citation_precision'))} |",
+        f"| Required-point coverage | {_display(report.get('required_point_coverage'))} |",
+        f"| Total eval cost | {_display(report.get('total_cost_usd'), ' USD')} |",
+        "| Production readiness | not approved |",
         README_END,
     ]
     return "\n".join(lines)

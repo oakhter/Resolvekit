@@ -1,3 +1,6 @@
+## Runtime note: this is the only runtime-relevant file in configs/.
+## Canonical experiment baseline: configs/ab/ contains advanced variants only.
+## Ignore configs/ab/ unless running offline experiments.
 name: resolvekit_alpha_baseline
 retrieval_arm: current_hybrid_rag
 query_decomposition_enabled: false

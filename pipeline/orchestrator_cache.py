@@ -1,6 +1,8 @@
 """
 Ticket-level response cache.
 
+Canonical orchestrator cache: request-fingerprint cache for whole ticket outputs.
+
 Keyed by the normalized ticket text alone (SHA256), giving an early-exit
 path that skips query_builder, retriever, and reranker for repeat tickets.
 This is a separate lookup from the chunk-keyed response cache in responder.py.

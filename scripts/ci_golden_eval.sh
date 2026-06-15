@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Preview gate thresholds live in scripts/run_golden_eval.py and include:
+# citation precision = 1.0, source-safety failures = 0, and warning caps.
+
 if [ -x ".venv/bin/python" ]; then
   PYTHON_BIN=".venv/bin/python"
 else

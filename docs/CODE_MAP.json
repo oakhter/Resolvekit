@@ -1,0 +1,54 @@
+{
+  "generated_from_commit": "306331b plus public-preview phase 7-9 working tree",
+  "generated_at": "2026-06-15T04:20:38Z",
+  "purpose": "Compact public code map for reviewers. The full local graph lives in .understand-anything/ and is intentionally ignored.",
+  "counts": {
+    "tracked_files": 220,
+    "publishable_files": 240,
+    "mapped_files": 240,
+    "configuration_role_files": 89
+  },
+  "primary_flows": [
+    {
+      "name": "Docker onboarding",
+      "entrypoint": "./get_started.sh",
+      "services": ["db", "onboarding"],
+      "ports": [8765, 8000]
+    },
+    {
+      "name": "Demo doctor",
+      "entrypoint": "./scripts/demo_doctor.sh",
+      "reports": [
+        "diagnostics/demo_doctor/latest.json",
+        "diagnostics/demo_doctor/latest.md"
+      ]
+    },
+    {
+      "name": "Docker smoke",
+      "entrypoint": "scripts/public_smoke.sh",
+      "checks": ["db schema", "knowledge load", "health", "resolve", "trace", "metrics", "source preview"]
+    },
+    {
+      "name": "No-key mock preview",
+      "entrypoint": "ACTIVE_PROVIDER=mock",
+      "provider": "backend/providers/mock_provider.py",
+      "purpose": "Inspect ingest, UI, traces, and review flow without hosted provider keys."
+    },
+    {
+      "name": "Performance smoke",
+      "entrypoint": "scripts/performance_smoke.py",
+      "checks": ["status codes", "average latency budget", "total cost budget"]
+    }
+  ],
+  "areas": {
+    "frontend": "Ticket UI, configurator, admin, onboarding screens.",
+    "backend/api": "HTTP routes and request/response behavior.",
+    "backend/core": "App config, analytics, orchestration, traces, replay.",
+    "backend/providers": "Hosted OpenAI/Gemini providers plus deterministic mock preview provider.",
+    "pipeline": "RAG steps: planning, retrieval, reranking, drafting, scoring, validation.",
+    "knowledge_loader": "CSV knowledge ingest into Postgres/pgvector.",
+    "scripts": "Setup, smoke tests, performance smoke, demo doctor, evals, diagnostics.",
+    "tests": "Focused phase hardening tests plus legacy mega-suite coverage.",
+    "configs/ab": "Advanced experiment variants; not needed for the first demo."
+  }
+}

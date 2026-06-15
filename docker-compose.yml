@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: resolvekit
       POSTGRES_PASSWORD: resolvekit
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - resolvekit_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
       - path: .env.docker
         required: false
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
 
@@ -44,8 +44,8 @@ services:
       ONBOARDING_ENV_FILE: .env.docker
       ONBOARDING_CONTAINER_MODE: "true"
     ports:
-      - "8765:8765"
-      - "8000:8000"
+      - "127.0.0.1:8765:8765"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
     command: ["python", "-m", "scripts.onboarding_server"]

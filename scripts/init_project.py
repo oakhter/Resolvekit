@@ -53,8 +53,10 @@ def write_env(updates: dict[str, str], path: Path = ENV_PATH) -> None:
 
 def provider_key_name(provider: str) -> str:
     normalized = provider.strip().lower()
-    if normalized not in {"openai", "gemini"}:
-        raise ValueError("Provider must be openai or gemini")
+    if normalized not in {"openai", "gemini", "mock"}:
+        raise ValueError("Provider must be openai, gemini, or mock")
+    if normalized == "mock":
+        return ""
     return "OPENAI_API_KEY" if normalized == "openai" else "GEMINI_API_KEY"
 
 
@@ -73,15 +75,18 @@ def build_env_updates(
         if existing.get("CONFIGURATOR_API_KEY") not in {"", "change-me-configurator", None}
         else f"rk_admin_{secrets.token_urlsafe(18)}"
     )
+    configurator_admin_token = existing.get("CONFIGURATOR_ADMIN_TOKEN", "")
+    if configurator_admin_token in {"", "replace-with-random-admin-token", admin_token, viewer_token}:
+        configurator_admin_token = f"rk_config_admin_{secrets.token_urlsafe(18)}"
     return {
         "ACTIVE_PROVIDER": provider,
         "DEMO_MODE": "true" if demo else "false",
-        key_name: provider_key.strip(),
+        **({key_name: provider_key.strip()} if key_name else {}),
         other_key: existing.get(other_key, ""),
         "API_KEY": viewer_token,
         "CONFIGURATOR_API_KEY": admin_token,
         "VIEWER_TOKEN": viewer_token,
-        "CONFIGURATOR_ADMIN_TOKEN": admin_token,
+        "CONFIGURATOR_ADMIN_TOKEN": configurator_admin_token,
         "DATABASE_URL": existing.get("DATABASE_URL") or DEFAULT_DATABASE_URL,
         "KNOWLEDGE_SCHEMA": existing.get("KNOWLEDGE_SCHEMA") or "knowledge",
         "OPS_SCHEMA": existing.get("OPS_SCHEMA") or "ops",
@@ -102,11 +107,11 @@ def ensure_env(
     existing = read_env(path)
     provider = (provider or existing.get("ACTIVE_PROVIDER") or "openai").strip().lower()
     key_name = provider_key_name(provider)
-    provider_key = provider_key or existing.get(key_name) or ""
-    if not provider_key and interactive:
+    provider_key = provider_key or (existing.get(key_name) if key_name else "") or ""
+    if key_name and not provider_key and interactive:
         print(f"{key_name} required. Token is written only to local .env.")
         provider_key = getpass.getpass(f"{key_name}: ").strip()
-    if not provider_key:
+    if key_name and not provider_key:
         raise SystemExit(f"{key_name} is required. Pass --provider-key or run interactively.")
     updates = build_env_updates(existing, provider, provider_key, demo)
     write_env(updates, path)
@@ -192,7 +197,7 @@ def write_project_files(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Initialize ResolveKit local onboarding config.")
     parser.add_argument("--demo", action="store_true", help="Use demo-friendly local settings.")
-    parser.add_argument("--provider", choices=["openai", "gemini"], help="Hosted LLM provider.")
+    parser.add_argument("--provider", choices=["openai", "gemini", "mock"], help="LLM provider. mock needs no provider key.")
     parser.add_argument("--provider-key", help="Provider API key. Prefer interactive prompt for local use.")
     parser.add_argument("--product-name", default="Example Product")
     parser.add_argument("--source-folder", default="knowledge_loader/processed")

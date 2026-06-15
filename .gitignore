@@ -5,6 +5,8 @@ __pycache__/
 .env.docker
 logs/
 diagnostics/logs/
+diagnostics/demo_doctor/*
+!diagnostics/demo_doctor/.gitkeep
 .cache/
 .DS_Store
 *.log
@@ -18,6 +20,7 @@ docs/*
 !docs/README.md
 !docs/DEMO.md
 !docs/TECHNICAL.md
+!docs/CODE_MAP.json
 diagnostics/usage/report.png
 tests/results/
 demo_data/onboarding/uploads/

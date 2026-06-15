@@ -1,101 +1,65 @@
 # ResolveKit
 
-**Status:** Public Alpha / Developer Preview. The current stored golden gate passes with zero source-safety hard failures, but ResolveKit is not production-ready for autonomous or unsupervised support use.
+ResolveKit is a **local-first, suggest-only support-drafting kit** and support-facing RAG starter kit. It drafts replies from approved sources only, cites every claim, abstains when unsure, and never sends anything without human review.
 
-ResolveKit is a self-hosted, source-backed support-resolution and support-intelligence framework.
+It is **suggest-only** and **not an autonomous support agent**. It does not auto-send, auto-resolve, mutate customer accounts, or turn raw tickets into customer-facing knowledge. Calls to `/resolve` are intended to run with `mode: "suggest"` and human review.
 
-It drafts suggested support replies using approved sources, citations, confidence scoring, validation, traces, feedback, and admin analytics.
+> Do not load private customer data into a public or shared instance. ResolveKit is local-first and demo-oriented; you are responsible for what you ingest and where you run it. Ingested content and submitted tickets are sent to your configured LLM provider and stored in the local database and trace store.
 
-It is suggest-only, not an autonomous support agent. It does not auto-send, auto-resolve, mutate customer accounts, or generate KB articles from raw tickets.
+Privacy boundary: ticket text and retrieved KB snippets go to the configured provider, OpenAI or Gemini. KB chunks, traces, and doctor reports stay in the local Postgres volume and trace store. Hashed tickets, not raw tickets, enter traces. local-first doesn't mean offline. Exposing beyond localhost exposes traces and admin analytics.
 
-## Why Not Just Attach Context To GPT?
+## Current Status
 
-Attaching files or pasting context into a general LLM works for one-off support questions. It breaks down when the same workflow needs to run every day across many agents, products, permission levels, and source updates.
+Public developer preview. Demo readiness is passing on the stored evaluation set; production readiness is not approved.
 
-ResolveKit makes the workflow repeatable:
+<!-- eval-report:start -->
+| Metric | Current value |
+| --- | ---: |
+| Demo readiness | passed |
+| Golden cases | 52 |
+| Source-safety hard failures | 0 |
+| Validation/review warnings | 12 |
+| Recall@3/5 | 0.6596 |
+| Source precision | 0.4716 |
+| Citation precision | 1 |
+| Required-point coverage | 0.0577 |
+| Total eval cost | 0.0232 USD |
+| Production readiness | not approved |
+<!-- eval-report:end -->
 
-- retrieves only the relevant approved chunks instead of sending every possible document
-- controls token use and provider cost per request
-- applies the same source rules, citation rules, and safety checks every time
-- records traces, token usage, latency, cost, validation results, and feedback
-- reports usage, retrieval health, answer quality, costs, escalation signals, and knowledge gaps
-- separates approved knowledge from raw tickets, chats, calls, and emails
-- gives support teams an API and eval loop instead of a manual prompt habit
+Treat every draft as a reviewer aid. Retrieval quality still needs work before production use: warnings are too high, source precision is below target, and required-point coverage is low.
 
-The value is not that GPT cannot use context. The value is turning context use into a governed, measurable, lower-waste support system that can scale beyond individual ad hoc chats.
+## Why This Exists
 
-## Who It Is For
+Teams experimenting with support RAG should not have to rebuild the same plumbing every time: Docker setup, CSV KB ingest, pgvector retrieval, citations, validation, traces, metrics, and evals. ResolveKit keeps that workflow in one small project so teams can test the shape of a governed support-drafting system before investing in a full platform.
 
-Support-ops engineers and developers embedded in support teams.
+## Quick Start
 
-Good fit:
-
-- teams comfortable with Docker, API keys, source configuration, and evals
-- teams that need cited, reviewable draft replies
-- teams that care about approved-source boundaries and traceability
-
-Not target yet:
-
-- no-code users expecting hosted SaaS
-- helpdesk replacement buyers
-- autonomous support-agent use cases
-
-## Public Alpha Status
-
-Current release posture:
-
-- Ready for public repository review as an alpha, assuming the tracked tree is secret-scanned before publishing.
-- Not ready for a production launch where users rely on drafts without human review.
-- Next quality target: reduce validation/review warnings, improve source precision, and improve required answer coverage while keeping source-safety hard failures at zero.
-
-| Area | Status | Notes |
-| --- | --- | --- |
-| Suggest-only `/resolve` | Done and tested | `mode: "suggest"` enforced. Unknown request fields rejected. |
-| Approved-source citations | Done and tested | Validation fails closed for unsafe citation paths. |
-| Trace fetch/replay | Done and tested | Redacted, bounded RunTrace records. |
-| Feedback capture | Done and tested | Agent action, edit distance, kept citations, review queue signals. |
-| Daily metrics snapshots | Done but not externally validated | API and aggregation exist; real-user metrics need deployment data. |
-| Docker public smoke | Done but not externally validated | `scripts/public_smoke.sh` added; outside clean-machine run still required. |
-| Source preview | Done and tested | Auth, size cap, MIME/suffix allowlist, repo-root path boundary. |
-| Source ingestion | CSV vector ingest ready | Onboarding uploads CSV KBs into Postgres/pgvector. XLSX and born-digital PDF preview/fixtures exist, but public vector ingest is CSV-only for alpha. |
-| 100-case golden set | Partial | Current set is 50+ cases; 100-case target remains open. |
-| Trace viewer UI | Partial | API visibility exists; richer support-ops UI still planned. |
-| Advanced reasoning experiments | Done, default-on as bounded experiment | Typed planner output, query decomposition, evidence table, structured reply rendering, validation upgrades, and trace fields exist behind workflow experiment config. |
-| No-code setup | Planned | Future onboarding layer, not current product identity. |
-
-## Release Readiness
-
-ResolveKit's public-alpha bar is source safety and inspectability, not perfect answer completeness. The current documented state supports a public repo because the release gate passes, customer-facing citation precision is `1.0`, and source-safety hard failures are `0`.
-
-Production use remains gated. Retrieval quality still needs hardening: Recall@3/5 is `0.6596`, source precision is `0.4716`, validation/review warnings are `12`, and deterministic required-point coverage is still low. Treat outputs as reviewable drafts until those quality metrics improve on a broader golden set.
-
-Before publishing the repo, rotate any provider key used during local testing, confirm `.env`/`.env.docker` are not tracked, run a secret scan on the exact tracked contents, and run the Docker smoke path from a clean checkout.
-
-## Safety Guarantees
-
-ResolveKit is designed around these invariants:
-
-- suggestions only, never auto-send
-- approved evidence only for customer-facing citations
-- raw tickets/chats/calls/emails cannot be cited as proof
-- validation blocks unsupported or unsafe claims
-- traces are redacted and bounded
-- config/source-preview/admin-style routes require auth
-- source preview cannot read arbitrary local paths
-
-Details: [Technical Guide](docs/TECHNICAL.md).
-
-## Run It
-
-Fast local path:
+Docker is the canonical public-preview path. Local Python mode is for development and needs Postgres with pgvector; use Docker if unsure.
 
 ```bash
 git clone <repo-url>
 cd <repo-directory>
+cp .env.docker.example .env.docker   # add your provider key and local secrets
 ./get_started.sh
+make doctor
 ```
 
-`get_started.sh` is Docker-first. It detects macOS, Linux, or WSL, verifies Docker Desktop/Compose, starts Postgres plus the onboarding wizard in containers, and opens the wizard. The wizard asks for your own OpenAI or Gemini API key and writes it only to local `.env.docker`. No hosted LLM token is committed or shared with demo data.
+`get_started.sh` starts Docker Postgres plus the onboarding wizard at:
+
+```text
+Onboarding wizard: http://127.0.0.1:8765
+Ticket workspace:  http://127.0.0.1:8000/
+```
+
+The wizard asks for an OpenAI/Gemini key, or `ACTIVE_PROVIDER=mock` for no-key preview, and stores secrets only in local `.env.docker`.
+
+You're set up when:
+- `make doctor` prints `Demo readiness: READY`
+- The ticket workspace opens at `http://127.0.0.1:8000/`
+- The demo ticket returns a draft with citations
+- Confidence and validation status are visible
+- The trace link opens a redacted run trace
 
 Shortcut:
 
@@ -103,19 +67,105 @@ Shortcut:
 make get-started
 ```
 
-Developer local setup remains available:
+Entry points:
+
+| Command | Use When |
+| --- | --- |
+| `./get_started.sh` | First-time Docker onboarding |
+| `make doctor` | Checking demo readiness |
+| `bash scripts/public_smoke.sh` | Running the public smoke test |
+| `python start.py` | Local development path, advanced |
+| `scripts/demo_start.sh` | Maintainer/demo helper |
+
+## Demo Doctor
+
+Run one command to check local readiness:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/init_project.py --demo
-.venv/bin/python scripts/generate_resolvekit_demo_data.py
-.venv/bin/python scripts/setup_db.py
-.venv/bin/python knowledge_loader/kb_loader.py
-.venv/bin/python start.py
+make doctor
 ```
 
-Required `.env` basics:
+This runs Docker checks, config checks, secret/local-path hygiene, focused tests, stored evaluation, Docker smoke, and onboarding endpoint checks. It writes:
+
+```text
+diagnostics/demo_doctor/latest.json
+diagnostics/demo_doctor/latest.md
+```
+
+The terminal summary uses plain language:
+
+```text
+Demo readiness: READY
+Production readiness: NOT READY
+```
+
+## What It Does
+
+ResolveKit takes a support ticket, retrieves approved knowledge, drafts a suggested reply, validates citations, records traces, and exposes metrics.
+
+```text
+Ticket -> Retrieval Plan -> Approved Sources -> Rerank -> Evidence Bundle -> Draft -> Validate -> Confidence -> Trace/Review
+```
+
+**Public preview ingest supports CSV only.** Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
+
+## What This Is
+
+- Local/self-hosted developer preview
+- CSV-first support knowledge ingest
+- Cited draft suggestions for support reviewers
+- Confidence, abstention, validation, and redacted traces
+- Human review required before any customer response
+
+## What This Is Not
+
+- Not production-approved
+- Not an autonomous agent
+- Not a customer chatbot
+- Not a helpdesk replacement
+- Not auto-send, auto-resolve, or account action
+- Not a source-of-truth editor
+- Not multi-tenant SaaS
+- Not for end customers
+- Raw tickets are never cited as evidence
+
+Suggest-only contract: use `mode: "suggest"`. Other modes are rejected server-side as a safety feature.
+
+Happy path:
+
+- upload or use a CSV knowledge base
+- ingest it into Postgres/pgvector
+- ask for a suggested reply
+- inspect citations, confidence, and trace data
+- record feedback on whether the draft was useful
+
+Sample walkthrough: paste "Customer cannot sign in on mobile app after a role change"; expect a cited draft, confidence band, validation status, and trace link. See `docs/DEMO.md`.
+
+Safety path:
+
+- missing context should lead to abstention or review
+- raw historical tickets are not customer-facing evidence
+- unsupported claims are blocked or flagged
+
+## Configuration Files
+
+Config map:
+
+| File / Surface | Purpose | User Should Edit? | Takes Effect |
+| --- | --- | --- | --- |
+| `.env` | Provider keys, DB, runtime secrets for local Python | Yes | Restart |
+| `.env.docker` | Provider keys, DB, runtime secrets for Docker | Yes | Restart containers |
+| `config/products.yaml` | Product identity, aliases, platforms, roles | Yes | Restart/reload |
+| `config/sources.yaml` | Source registry, paths, policy | Yes | Re-ingest for source changes |
+| `config/output.yaml` | Draft tone and visible sections | Yes | Live/next resolve |
+| `config/retrieval_policy.yaml` | Retrieval weights and chunking rules | Advanced | Restart or re-ingest by field |
+| `config/workflow.yaml` | Suggest-only workflow behavior | Rarely | Live/next resolve |
+| `configs/baseline.yaml` | Baseline experiment config | No for first demo | Advanced only |
+| `configs/ab/` | Offline experiment variants | No for first demo | Advanced only |
+
+Ignore `configs/ab/` unless experimenting.
+
+Required basics:
 
 ```env
 ACTIVE_PROVIDER=openai
@@ -131,248 +181,70 @@ CONFIGURATOR_PREFILL_API_KEY=false
 CORS_ALLOW_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 ```
 
-Supported hosted providers are `openai` and `gemini`. Set only the provider key needed by `ACTIVE_PROVIDER`.
+Supported hosted providers are `openai` and `gemini`. Set only the provider key needed by `ACTIVE_PROVIDER`; `model_warmup` checks the selected provider during doctor runs.
+No-key preview mode is available with `ACTIVE_PROVIDER=mock`; it returns canned drafts labeled `MOCK PREVIEW` so you can inspect ingest, UI, traces, and review flow without paid API calls.
 
-Open:
+## Common Failures
 
-```text
-Ticket workspace: http://127.0.0.1:8000/
-Configurator:     http://127.0.0.1:8000/configurator
-API docs:         http://127.0.0.1:8000/docs
-```
+| Failure | Good Error Behavior |
+| --- | --- |
+| Missing provider key | Names the exact missing env var |
+| Docker not running | Says Docker is required for quickstart |
+| Port 8000/8765 in use | Shows the conflict and fix |
+| DB not ready | Says what to wait for or run |
+| Bad CSV row | Names row, column, expected value |
+| No approved sources | Says rows were excluded by source flags |
+| Non-CSV ingest | Says CSV-only and points to the template |
+| Provider call fails | Shows provider and safe remediation |
 
-Role check:
+## Code Map
+
+Core work lives in `frontend/`, `backend/api/`, `backend/core/`, `backend/providers/`, `pipeline/`, `knowledge_loader/`, and `scripts/`. See `docs/TECHNICAL.md` and `docs/CODE_MAP.json`.
+
+## AI Transparency And Ethics
+
+This codebase and its documentation were substantially generated with AI assistance and then reviewed through tests and local smoke runs.
+
+The project is meant as a learning and experimentation base for support RAG systems. It is not a drop-in autonomous agent. LLM-generated drafts are suggestions for human review. Teams should follow their own policy for disclosing AI assistance in support workflows.
+
+Do not use raw tickets, chats, calls, or emails as customer-facing evidence. Keep approved knowledge sources separate from historical support data, and validate citations before showing a draft to a customer.
+
+ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.
+
+## Developer Commands
 
 ```bash
-curl -sS -H "x-api-key: $VIEWER_TOKEN" http://127.0.0.1:8000/api/me
-curl -sS -H "x-api-key: $CONFIGURATOR_ADMIN_TOKEN" http://127.0.0.1:8000/api/me
-```
-
-Docker path:
-
-```bash
-cp .env.docker.example .env.docker
-# Set API_KEY, CONFIGURATOR_API_KEY, and one provider key.
 bash scripts/public_smoke.sh
-```
-
-The public smoke script validates Docker startup, database health, demo ingestion, `/health`, `/resolve`, trace fetch, daily metrics, and source preview.
-
-Public alpha deployments should keep `CONFIGURATOR_PREFILL_API_KEY=false`, set non-placeholder API keys, and restrict `CORS_ALLOW_ORIGINS` to the hosts that should call the API.
-
-## What You Should See
-
-Happy path:
-
-- known support ticket produces a suggested reply
-- confidence and citations appear
-- trace ID appears in the response
-- trace fetch shows retrieval, validation, and final response shape
-- feedback can record whether the agent sent, edited, or rejected the draft
-
-Safety path:
-
-- unsupported or low-context ticket abstains or asks for missing context
-- validation/review queue records why
-- unsafe sources are not customer-facing citations
-
-
-## Workflow
-
-```mermaid
-flowchart TD
-    A[Approved sources] --> B[Preview + metadata validation]
-    B --> C[Knowledge store]
-    D[Support ticket] --> E[Redact + normalize]
-    E --> F[Retrieve approved evidence]
-    C --> F
-    F --> G[Draft suggested reply]
-    G --> H[Score + validate citations]
-    H --> I{Safe enough?}
-    I -->|Yes| J[Show suggestion]
-    I -->|No| K[Abstain or review]
-    J --> L[Trace + feedback + metrics]
-    K --> L
-```
-
-## LLM Metrics
-
-Every completed hosted LLM call records an `api_calls` row with provider, model, workflow step, input tokens, output tokens, latency, estimated cost, error status, and error message.
-
-`/resolve` responses include `usage_summary` and `llm_workflow` so operators can see token totals and which LLM stages ran. RunTrace records stage-level token usage and pipeline latency for replay and audit.
-
-Metrics surfaces:
-
-- `GET /metrics` returns the last seven days of LLM call count, average latency, estimated cost, and error count.
-- `GET /metrics/daily` returns daily snapshots after `.venv/bin/python scripts/aggregate_metrics_daily.py`.
-- `GET /admin/analytics/report` returns a support-intelligence report covering usage, retrieval, evaluation, knowledge gaps, escalation signals, and costs.
-- `GET /admin/analytics/report?format=markdown` returns the same report as a Markdown summary for ops review.
-- `GET /admin/analytics/{section}` returns one section: `usage`, `retrieval`, `evaluation`, `knowledge_gaps`, `escalations`, or `costs`.
-- `POST /analytics/events` records lightweight events such as source clicks for adoption and workflow analysis.
-- Feedback records reviewer action, edit distance, kept citations, confidence, and review-queue signals.
-
-Multi-user analytics use explicit request identity when supplied:
-
-```text
-x-resolvekit-user: agent-a
-x-resolvekit-team: tier-2
-x-resolvekit-session: session-123
-```
-
-If no user header/body field is provided, ResolveKit falls back to a short hash of the API token. This keeps the alpha simple while still allowing per-user and per-team usage and cost breakdowns in demo or internal deployments.
-
-## Evaluation Metrics
-
-ResolveKit is evaluated as a support-resolution system, not just as a chatbot. The core question is whether it retrieves approved evidence, drafts a usable answer, cites safely, stays within cost and latency budgets, and abstains when context is missing.
-
-Current stored golden-eval report:
-
-<!-- eval-report:start -->
-| Metric | Current Alpha Result | What It Proves |
-| --- | ---: | --- |
-| Golden cases | 52 | Size of the manually reviewed support-style eval set. |
-| Evaluated results | 52 | Release gate used stored outputs, not schema-only placeholders. |
-| Source-safety hard failures | 0 | Forbidden, raw-ticket, unapproved, or unsupported customer-facing citations found by the gate. |
-| Recall@1 | 0.5106 | Whether expected evidence was ranked first. |
-| Recall@3 | 0.6596 | Whether expected evidence appeared in the first three sources. |
-| Recall@5 | 0.6596 | Whether expected evidence appeared in the first five sources. |
-| MRR | 0.5709 | Whether the first correct source was ranked near the top. |
-| Source precision | 0.4716 | Whether retrieved sources matched expected/allowed sources. |
-| Citation recall | 0.1915 | Whether expected evidence was cited in the final answer. |
-| Citation precision | 1 | Whether final citations were expected/allowed. |
-| Required point coverage | 0.0577 | Deterministic check for expected answer content. |
-| Route accuracy | 1 | Whether tickets were classified into the expected support route. |
-| Confidence accuracy | 0.75 | Whether green/yellow/red confidence matched expected behavior. |
-| Abstention accuracy | 0.7692 | Whether missing-context/review cases abstained correctly. |
-| P50 latency | 728.5 ms | Median response-time signal for alpha runs. |
-| P95 latency | 7805.1 ms | Tail response-time signal for alpha runs. |
-| Avg total tokens | 1885.5 | Average prompt+completion tokens per stored result. |
-| Avg cost/query | 0.0004 USD | Cost copied from `/resolve` usage fields. |
-| Total reported LLM cost | 0.0232 USD | Total reported cost for the stored golden run. |
-| Release profile | public_alpha | Gate profile used for this report. |
-| Release gate passed | True | Current stored-result release gate status. |
-<!-- eval-report:end -->
-
-Rank-aware retrieval metrics are also computed by the golden-eval runner:
-
-| Metric | Why It Matters |
-| --- | --- |
-| Recall@1 | Shows whether expected evidence is ranked first. |
-| Recall@3 | Shows whether expected evidence appears in the first three retrieved sources. |
-| Recall@5 | Shows whether expected evidence appears in the first five retrieved sources. |
-| Mean reciprocal rank | Rewards systems that rank the first correct source near the top. |
-| Citation recall and precision | Shows whether the final answer cites expected and approved supporting sources. |
-| Required point coverage | Shows whether the generated answer includes deterministic expected points when stored answers are available. |
-| Token usage and cost/query | Shows whether retrieval keeps per-query context economical. |
-| Validation/review warning count | Shows how often outputs need human review despite avoiding hard safety failures. |
-
-These numbers are intentionally visible during alpha. The current gate passes because source-safety hard failures are zero and evaluated results are present, but source precision, answer validation, answer coverage, and broader golden-set coverage are still active improvement areas.
-
-Next release-quality targets:
-
-- keep source-safety hard failures at `0`
-- reduce validation/review warnings from `12` toward fewer than `5`
-- improve source precision from `0.4716` toward at least `0.60`
-- improve Recall@3/5 from `0.6596` toward at least `0.75`
-- improve required-point coverage enough that golden answers include the expected support details, not just safe citations
-
-Live retrieval-arm comparison was run on May 19, 2026 against the local `/resolve` API with 52 golden cases per arm. Current result: keep `current_hybrid_rag` as the baseline/default path. Query decomposition did not improve Recall@3/Recall@5, reduced Recall@1/MRR slightly, and added about 400 ms to median latency in this run.
-
-| Retrieval Arm | Repo Status |
-| --- | --- |
-| Current hybrid RAG | Baseline path. |
-| Current RAG + query decomposition | Implemented through `retrieval_strategy_v1`; live A/B tested, not better than baseline on latest run. |
-| Graph-style retrieval-style layer | Disabled/fail-closed experiment arm. |
-| Markdown canonical source + current retrieval | Experiment arm definition only. |
-
-Historical live A/B note:
-
-- Command: `.venv/bin/python scripts/run_live_ab_eval.py --delay-seconds 2.2`
-- Output: generated locally under `eval/ab/` and intentionally not committed.
-- Note: this table is retained as historical arm-ranking evidence. Current release readiness is represented by the stored golden report above.
-- Previous local A/B evidence kept `current_hybrid_rag` as the default. Rerun the command above after retrieval changes instead of relying on older numeric rows.
-
-## Project Layout
-
-```text
-backend/              API, safety modules, DB schema
-pipeline/             resolve pipeline stages
-frontend/             ticket workspace and configurator
-knowledge_loader/     source connectors and KB loading
-config/               local YAML config and examples
-scripts/              setup, smoke, eval, diagnostics
-tests/                unit, integration, API, eval, smoke tests
-docs/                 compact strategy, technical, implementation, A/B, release, demo, and LLM context docs
-eval/                 golden-set evaluation assets
-```
-
-## Common Commands
-
-```bash
-./get_started.sh
-docker compose exec onboarding python scripts/onboarding_doctor.py
-docker compose exec onboarding python scripts/setup_db.py
-docker compose exec onboarding python knowledge_loader/kb_loader.py
-docker compose exec onboarding python scripts/check_db.py --recent
-docker compose exec onboarding python scripts/qa_retrieval.py --with-db
-docker compose exec onboarding python scripts/aggregate_metrics_daily.py
-docker compose exec onboarding python tests/run_qa.py
+.venv/bin/python -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values" tests/test_mock_provider.py tests/test_post_launch_hardening.py tests/test_source_contract_properties.py tests/test_ui_snapshots.py
 bash scripts/ci_golden_eval.sh
-bash scripts/public_smoke.sh
+make reset-demo
+make reload-kb
 ```
 
-Clean Docker rebuild:
+Logs live under `diagnostics/logs/` and app stdout; attach `diagnostics/demo_doctor/latest.md` after checking it contains no private source content. Open gaps from `llm_review.md`: golden-case audit, warning reduction, GIFs, fresh-machine launch gate, final doctor report, release tag, router/orchestrator cleanup, extra ingest format, true local LLM. No SaaS, billing, or enterprise promises.
 
-```bash
-docker compose exec onboarding python scripts/rebuild_db.py
-docker compose exec onboarding python knowledge_loader/kb_loader.py
+## API Shape
+
+Primary endpoint:
+
+```text
+POST /resolve
 ```
 
-`rebuild_db.py` drops local schemas. Use only for a fresh local database.
+Request model rejects unknown fields. Use suggest mode:
 
-## API
+```json
+{
+  "mode": "suggest",
+  "ticket": "Customer cannot sign in on mobile app after a role change.",
+  "product": "example_product",
+  "permission_level": "agent",
+  "access_channel": "mobile_app"
+}
+```
 
-Core endpoints:
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /` | Ticket workspace |
-| `GET /configurator` | Local configurator UI |
-| `GET /health` | Health check |
-| `POST /resolve` | Generate grounded suggestion |
-| `POST /feedback` | Store reviewer feedback |
-| `GET /draft-runs` | Read-only draft history |
-| `POST /knowledge-issues` | Create reviewer-owned knowledge issue |
-| `GET /traces/{trace_id}` | Fetch redacted RunTrace |
-| `GET /metrics` | Fetch seven-day LLM and quality metrics |
-| `GET /metrics/daily` | Fetch daily metrics snapshots |
-| `POST /configurator/source-preview` | Preview source parsing before ingestion |
-
-Runtime endpoints require `x-api-key: $API_KEY`. Configurator routes require `CONFIGURATOR_API_KEY`.
-
-Contract summary: [Technical Guide](docs/TECHNICAL.md).
-
-## Docs
-
-- [Docs Index](docs/README.md)
-- [Technical Guide](docs/TECHNICAL.md)
-- [Demo Guide](docs/DEMO.md)
-
-## Experimental
-
-- no-code onboarding
-- hosted SaaS
-- multi-tenant deployment
-- broad BYOA launch
-- OCR
-- web crawling
-- raw-ticket case learning
-- autonomous actions
-
-These require separate product and safety review.
+See [docs/TECHNICAL.md](docs/TECHNICAL.md) for API routes, trace fields, metrics, and safety details.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-LLM-generated drafts are suggestions for human review. Deployers are responsible for reviewing, editing, approving, and sending final customer replies under their own policies and provider terms. ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.

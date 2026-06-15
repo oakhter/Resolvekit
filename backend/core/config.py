@@ -34,6 +34,16 @@ CONFIGURATOR_API_KEY = os.getenv("CONFIGURATOR_API_KEY") or API_KEY
 VIEWER_TOKEN = os.getenv("VIEWER_TOKEN") or API_KEY
 CONFIGURATOR_ADMIN_TOKEN = os.getenv("CONFIGURATOR_ADMIN_TOKEN") or CONFIGURATOR_API_KEY
 
+_PLACEHOLDER_SECRETS = {
+    "",
+    "change-me",
+    "change-me-configurator",
+    "changeme",
+    "test",
+    "replace-with-random-viewer-token",
+    "replace-with-random-admin-token",
+}
+
 # ── Databases ─────────────────────────────────────────────────
 # v3.x layout uses one Postgres database with two schemas:
 #   knowledge: retrieval/vector tables
@@ -45,7 +55,8 @@ OPS_SCHEMA = os.getenv("OPS_SCHEMA", "ops")
 # ── Model Names ──────────────────────────────────────────────
 MODELS = {
     "gemini": "gemini-2.0-flash",
-    "openai": "gpt-4o-mini"
+    "openai": "gpt-4o-mini",
+    "mock": "resolvekit-mock-preview",
 }
 
 # ── Retrieval Settings ───────────────────────────────────────
@@ -57,6 +68,32 @@ MAX_CONTEXT_CHARS = 6000
 
 
 # ── Validation (NO side effects) ─────────────────────────────
+def _clean_secret(value: str | None) -> str:
+    return str(value or "").strip()
+
+
+def validate_operational_secrets(values: dict[str, str | None] | None = None) -> None:
+    secrets = values or {
+        "API_KEY": API_KEY,
+        "CONFIGURATOR_API_KEY": CONFIGURATOR_API_KEY,
+        "VIEWER_TOKEN": VIEWER_TOKEN,
+        "CONFIGURATOR_ADMIN_TOKEN": CONFIGURATOR_ADMIN_TOKEN,
+    }
+    cleaned = {key: _clean_secret(value) for key, value in secrets.items()}
+    for key, value in cleaned.items():
+        if value.lower() in _PLACEHOLDER_SECRETS:
+            raise ValueError(f"{key} is missing or uses a placeholder value")
+
+    shared_pairs = (
+        ("API_KEY", "CONFIGURATOR_API_KEY"),
+        ("API_KEY", "CONFIGURATOR_ADMIN_TOKEN"),
+        ("CONFIGURATOR_API_KEY", "CONFIGURATOR_ADMIN_TOKEN"),
+    )
+    for left, right in shared_pairs:
+        if cleaned.get(left) and cleaned.get(left) == cleaned.get(right):
+            raise ValueError(f"{left} and {right} must not share the same secret")
+
+
 def validate():
     if ACTIVE_PROVIDER not in MODELS:
         raise ValueError(f"Unsupported ACTIVE_PROVIDER: {ACTIVE_PROVIDER}")
@@ -66,6 +103,7 @@ def validate():
         raise ValueError("OPENAI_API_KEY is missing")
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL is missing")
+    validate_operational_secrets()
 
 
 def validate_db():

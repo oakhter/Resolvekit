@@ -3,6 +3,8 @@ import hashlib
 import json
 import re
 import uuid
+
+# Canonical low-level cache: response-cache and retrieval-cache DB helpers.
 from backend.core import config
 from backend.core import project_config
 from backend.core.logger import get_logger

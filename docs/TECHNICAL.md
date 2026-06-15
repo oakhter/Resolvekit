@@ -1,6 +1,6 @@
 # ResolveKit Technical Guide
 
-ResolveKit is a local-first, source-grounded, suggest-only support drafting framework. This guide is the fast technical orientation: what runs, how a request moves through the system, where safety is enforced, and how to verify the alpha path.
+ResolveKit is a local-first, source-grounded, suggest-only support drafting framework. This guide is the fast technical orientation: what runs, how a request moves through the system, where safety is enforced, and how to verify the developer-preview path.
 
 ## System Shape
 
@@ -22,7 +22,7 @@ Main surfaces:
 - `pipeline/`: retrieval, reranking, confidence, validation, and response shaping.
 - `pipeline/responder.py`: suggest-only draft construction and response formatting.
 - `backend/core/run_trace.py`: redacted trace construction and storage helpers.
-- `knowledge_loader/`: source connectors and alpha `SourceRecord` contract.
+- `knowledge_loader/`: source connectors and developer-preview `SourceRecord` contract.
 - `frontend/ticket/`: Viewer workflow.
 - `frontend/ticket/index.html`: support ticket workspace.
 - `frontend/configurator/`: Admin/configurator workflow.
@@ -38,6 +38,19 @@ Main surfaces:
 6. Validation checks citations, support, source safety, confidence band, and abstention rules.
 7. The API returns the draft, caveats, citations, confidence, validation outcome, and trace summary.
 8. Admin-only flows can inspect full trace JSON, replay by trace ID, export support bundles, and run eval/A/B jobs.
+
+## Core Preview Routes
+
+Public preview docs foreground the route set needed for setup, drafting, source preview, and trace review:
+
+- `POST /resolve`
+- `GET /health`
+- `POST /configurator/source-preview`
+- `GET /traces/{trace_id}`
+- `GET /configurator`
+- `POST /feedback`
+
+Admin analytics remains available for local operators, but it is secondary to the core demo path.
 
 ## Stable API Contract
 
@@ -60,6 +73,24 @@ Main surfaces:
 
 Request model rejects unknown fields. `mode: "suggest"` is the only supported response mode.
 
+Forbidden mode example:
+
+```json
+{
+  "detail": {
+    "error_type": "validation-blocked",
+    "message": "Unsupported mode. This v3.x demo is suggest-only."
+  }
+}
+```
+
+Provider matrix:
+
+| Provider | Required Variables | Defaults | Smoke Command |
+| --- | --- | --- | --- |
+| OpenAI | `ACTIVE_PROVIDER=openai`, `OPENAI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `DATABASE_URL` | `gpt-4o-mini` | `make doctor` |
+| Gemini | `ACTIVE_PROVIDER=gemini`, `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `DATABASE_URL` | `gemini-2.0-flash` | `make doctor` |
+
 ## Source Contract
 
 Alpha onboarding supports CSV vector ingest into Postgres/pgvector. XLSX and born-digital PDF preview/fixtures exist, but public vector ingest is CSV-only until the connector-to-vector path is wired.
@@ -70,8 +101,44 @@ Required fields:
 
 `source_id, source_title, source_type, source_authority, is_approved, is_active, is_customer_facing_allowed, approved_at, reviewed_by, needs_review_at, doc_type, product_area, issue_class, version_scope, escalation_risk, body`
 
+| Column | Tier | Purpose | Accepted Values / Example |
+| --- | --- | --- | --- |
+| `source_id` | Required | Stable source identifier | `kb_001` |
+| `source_title` | Required | Human-readable citation title | `Password Reset Guide` |
+| `source_type` | Required | Public preview file/source family | `csv` |
+| `is_approved` | Required | Admits source into governed retrieval | `true` or `false` |
+| `is_active` | Required | Keeps disabled docs out of retrieval | `true` or `false` |
+| `is_customer_facing_allowed` | Required | Permits customer-facing citation | `true` or `false` |
+| `body` | Required | Content to chunk and retrieve | Article text |
+| `product_area` | Recommended | Improves routing and retrieval | `billing` |
+| `issue_class` | Recommended | Improves routing and retrieval | `login_issue` |
+| `version_scope` | Recommended | Product version applicability | `v2` |
+| `source_authority` | Recommended | Ranking/trust signal | `canonical`, `approved`, `conditional` |
+| `approved_at` | Recommended | Approval timestamp | ISO date |
+| `needs_review_at` | Recommended | Freshness signal | ISO date |
+| `reviewed_by` | Governance | Audit metadata | `support_ops` |
+| `doc_type` | Governance | Finer content category | `faq`, `policy`, `known_issue` |
+| `escalation_risk` | Governance | Safety escalation signal | `low`, `medium`, `high` |
+
+Source eligibility truth table:
+
+| `is_approved` | `is_active` | `is_customer_facing_allowed` | Retrievable? | Citable customer-facing? | User sees |
+| --- | --- | --- | --- | --- | --- |
+| true | true | true | Yes | Yes | Eligible citation |
+| true | true | false | No | No | Excluded as internal-only |
+| true | false | true | No | No | Excluded as inactive |
+| true | false | false | No | No | Excluded as inactive/internal |
+| false | true | true | No | No | Excluded as unapproved |
+| false | true | false | No | No | Excluded as unapproved/internal |
+| false | false | true | No | No | Excluded as inactive/unapproved |
+| false | false | false | No | No | Excluded as unsafe |
+
+Re-ingestion semantics: re-running ingest on a changed file computes a new document hash, creates a new document version, and tombstones old active chunks through `plan_document_reingestion` and `tombstone_existing_document_chunks`. Cached chunks missing safety metadata are hydrated from the DB before use; Phase 7 cache tests keep superseded chunks from returning.
+
 Demo files:
 
+- `demo_data/csv/minimal_valid_kb.csv`
+- `demo_data/csv/invalid_examples/`
 - `demo_data/csv/resolvekit_demo_kb.csv`
 - `demo_data/xlsx/resolvekit_demo_kb.xlsx`
 - `demo_data/pdf/pdf_manifest.csv`
@@ -114,6 +181,21 @@ Admin token:
 - Validation blocks unsupported or unsafe claims.
 - Red-confidence customer-facing drafts must abstain.
 - Logs, traces, exports, and API responses must not expose secrets or private raw ticket data.
+
+## Config Reload Semantics
+
+Doctor and startup logs report the resolved absolute path for each runtime config file. A source label of `local` means `config/*.yaml` exists and overrides the tracked example. `example` means ResolveKit is using `config/*.example.yaml`. `default` means only built-in defaults are active.
+
+| Runtime file | Applies | Reload behavior |
+| --- | --- | --- |
+| `.env` / `.env.docker` | Provider keys, DB URL, auth secrets, CORS, warmup flags | Restart |
+| `config/products.yaml` | Product identity, aliases, platforms, roles | Restart |
+| `config/sources.yaml` | Source paths, column mappings, enabled sources | Re-ingest |
+| `config/output.yaml` | Output mode, audience, visible draft sections | Live |
+| `config/retrieval_policy.yaml` | Route weights, source authority, chunk/context rules | Live for weights; re-ingest for chunk/context fields |
+| `config/workflow.yaml` | Evaluator, retry, and suggest-only workflow controls | Live |
+
+Source-policy, source-path, chunking, and contextual-retrieval edits silently require re-ingestion because stored chunks keep the metadata created at ingest time. Output and workflow edits apply on the next `/resolve` call unless they touch runtime secrets or provider selection.
 
 ## Eval And A/B
 
@@ -158,11 +240,22 @@ Report categories:
 - Escalations: review queue volume, escalation count, source issue types.
 - Costs: trace-level cost, API-call cost, average cost per query, API call count, p95 latency.
 
-Multi-user tracking is intentionally lightweight for alpha. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
+Multi-user tracking is intentionally lightweight for the developer preview. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
 
-A/B rules: offline replay only for alpha, same golden cases for control and treatment, one changed lever per variant, negative results retained, and ship/no-ship decisions recorded under `experiments/decisions/`.
+A/B rules: offline replay only for the developer preview, same golden cases for control and treatment, one changed lever per variant, negative results retained, and ship/no-ship decisions recorded under `experiments/decisions/`.
 
-## Release Gates
+## Where To Start Changing Code
+
+| Goal | Files |
+| --- | --- |
+| Change UI | `frontend/ticket/index.html`, `frontend/configurator/index.html`, `frontend/admin/index.html`, `frontend/onboarding/index.html` |
+| Change API route behavior | `backend/api/app.py` |
+| Change orchestration | `backend/core/orchestrator.py` |
+| Change retrieval/drafting/validation | `pipeline/retriever.py`, `pipeline/reranker.py`, `pipeline/responder.py`, `pipeline/validation.py` |
+| Change ingest | `knowledge_loader/kb_loader.py`, `knowledge_loader/source_contract.py` |
+| Change demo/production readiness checks | `scripts/run_golden_eval.py`, `scripts/ci_golden_eval.sh`, `scripts/demo_doctor.sh` |
+
+## Demo And Production Readiness
 
 - [ ] Docker quickstart works cleanly.
 - [x] Viewer token works.
@@ -179,6 +272,8 @@ A/B rules: offline replay only for alpha, same golden cases for control and trea
 - [x] Secret scan passes.
 - [x] Source-safety hard failures equal zero.
 - [x] Red-confidence drafts abstain.
+
+Production readiness is not approved until retrieval quality, source precision, validation warnings, and hosted-security checks meet their targets.
 
 ## Quickstart
 

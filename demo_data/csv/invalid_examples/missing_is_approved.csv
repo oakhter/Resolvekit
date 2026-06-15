@@ -1,0 +1,2 @@
+source_id,source_title,source_type,source_authority,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+bad_001,Missing Approval,csv,canonical,true,true,2026-01-01,support_ops,2027-01-01,faq,login,password_reset,v1,low,This row is missing the is_approved column.

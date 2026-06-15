@@ -51,9 +51,9 @@ def status():
 
 @app.post("/api/env")
 def configure_env(body: EnvRequest):
-    if body.provider not in {"openai", "gemini"}:
-        raise HTTPException(status_code=400, detail="Provider must be openai or gemini.")
-    if not body.provider_key.strip():
+    if body.provider not in {"openai", "gemini", "mock"}:
+        raise HTTPException(status_code=400, detail="Provider must be openai, gemini, or mock.")
+    if body.provider != "mock" and not body.provider_key.strip():
         raise HTTPException(status_code=400, detail="Provider key is required.")
     return onboarding_tasks.configure_env(body.provider, body.provider_key.strip())
 

@@ -69,6 +69,11 @@ def startup():
     try:
         logger.info("Validating configuration...")
         config.validate()
+        for key, item in project_config.resolved_config_files().items():
+            logger.info(f"Config {key}: {item['source']} -> {item['active_path']}")
+        runtime_config_validation = project_config.validate_runtime_config_files()
+        if not runtime_config_validation["valid"]:
+            raise ValueError("Runtime config validation failed: " + "; ".join(runtime_config_validation["errors"]))
 
         logger.info("Checking database connections...")
         config.validate_db()
@@ -293,10 +298,8 @@ CONFIGURATOR_SOURCE_PREVIEW_MIME_ALLOWLIST = {
     "text/csv",
     "application/csv",
     "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/pdf",
 }
-CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv", ".xlsx", ".pdf"}
+CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv"}
 DIAGNOSTIC_CHECKS = {
     "app_runtime": {
         "name": "App Runtime",
@@ -505,6 +508,20 @@ def _mask_diagnostic_value(key: str, value) -> str:
     return raw
 
 
+def _redact_export_value(value):
+    if isinstance(value, dict):
+        return {key: _redact_export_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_export_value(item) for item in value]
+    if isinstance(value, str):
+        redacted = value
+        for secret in (config.OPENAI_API_KEY, config.GEMINI_API_KEY, config.API_KEY, config.CONFIGURATOR_API_KEY):
+            if secret and len(secret) >= 4:
+                redacted = redacted.replace(secret, "[REDACTED_SECRET]")
+        return redacted
+    return value
+
+
 def build_config_diagnostics() -> list[dict]:
     items = [
         ("ACTIVE_PROVIDER", True, config.ACTIVE_PROVIDER, "LLM provider selected at app startup."),
@@ -600,6 +617,7 @@ def run_diagnostic_check(check_id: str) -> dict:
                 "top_k_retrieval": config.TOP_K_RETRIEVAL,
                 "top_k_rerank": config.TOP_K_RERANK,
                 "route_policy_count": route_count,
+                "config_files": project_config.resolved_config_files(),
             }, started=started)
         if check_id == "rate_limit":
             return _diagnostic_result(check_id, "ok", f"Resolve rate limit is {RATE_LIMIT_SECONDS}s between requests.", {
@@ -607,13 +625,18 @@ def run_diagnostic_check(check_id: str) -> dict:
                 "last_call_epoch": LAST_CALL,
             }, started=started)
         if check_id == "auth_config":
-            api_placeholder = config.API_KEY in {"change-me", "change-me-configurator", "changeme", "test"}
-            cfg_placeholder = config.CONFIGURATOR_API_KEY in {"change-me", "change-me-configurator", "changeme", "test"}
-            status = "warn" if api_placeholder or cfg_placeholder else "ok"
-            return _diagnostic_result(check_id, status, "Auth keys are present." if status == "ok" else "Auth keys are present but look like placeholders.", {
+            details = {
                 "api_key": _mask_diagnostic_value("API_KEY", config.API_KEY),
                 "configurator_api_key": _mask_diagnostic_value("CONFIGURATOR_API_KEY", config.CONFIGURATOR_API_KEY),
-            }, started=started)
+                "viewer_token": _mask_diagnostic_value("VIEWER_TOKEN", config.VIEWER_TOKEN),
+                "configurator_admin_token": _mask_diagnostic_value("CONFIGURATOR_ADMIN_TOKEN", config.CONFIGURATOR_ADMIN_TOKEN),
+            }
+            try:
+                config.validate_operational_secrets()
+                return _diagnostic_result(check_id, "ok", "Auth keys are present and distinct.", details, started=started)
+            except ValueError as exc:
+                details["error"] = str(exc)
+                return _diagnostic_result(check_id, "fail", f"Auth keys are unsafe: {exc}", details, started=started)
         if check_id == "storage":
             paths = [BASE_DIR / "config", BASE_DIR / "logs", BASE_DIR / "diagnostics"]
             missing = [str(path) for path in paths if not path.exists()]
@@ -725,10 +748,25 @@ def _actor_metadata(request: Request, body: BaseModel) -> dict:
 # ── Health Check ─────────────────────────────────────────────
 @app.get("/health")
 def health():
+    db_reachable = False
+    kb_present = False
+    try:
+        with psycopg2.connect(config.DATABASE_URL, connect_timeout=2) as conn:
+            db_reachable = True
+            schema = _safe_schema_name(config.KNOWLEDGE_SCHEMA)
+            with conn.cursor() as cur:
+                cur.execute(f'SET search_path TO "{schema}", public;')
+                cur.execute("SELECT COUNT(*) FROM knowledge_base_identifier")
+                kb_present = int(cur.fetchone()[0] or 0) > 0
+    except Exception:
+        db_reachable = False
     return {
         "status": "ok",
         "service": "ResolveKit",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "db_reachable": db_reachable,
+        "provider_configured": bool(config.OPENAI_API_KEY if config.ACTIVE_PROVIDER == "openai" else config.GEMINI_API_KEY),
+        "kb_present": kb_present,
     }
 
 
@@ -780,6 +818,7 @@ def get_configurator_config():
             "field_metadata": project_config.config_field_metadata(),
             "setup_wizard": project_config.setup_wizard_status(data),
             "ui_contracts": ui_contracts(),
+            "config_files": project_config.resolved_config_files(),
         }
     except Exception as e:
         logger.error(f"Configurator load failed: {e}", exc_info=True)
@@ -803,6 +842,7 @@ def save_configurator_config(body: ConfiguratorSaveRequest, request: Request):
             "validation": project_config.validate_config(result["config"]),
             "field_metadata": project_config.config_field_metadata(),
             "setup_wizard": project_config.setup_wizard_status(result["config"]),
+            "reload_semantics": project_config.config_impact_labels(),
         }
     except Exception as e:
         logger.error(f"Configurator save failed: {e}", exc_info=True)
@@ -815,7 +855,11 @@ def validate_configurator_config(body: ConfiguratorSaveRequest):
         current = project_config.load_config()
         incoming = body.dict(exclude_none=True)
         current.update(incoming)
-        return {"status": "ok", "validation": project_config.validate_config(current)}
+        return {
+            "status": "ok",
+            "validation": project_config.validate_config(current),
+            "reload_semantics": project_config.config_impact_labels(),
+        }
     except Exception as e:
         logger.error(f"Configurator validation failed: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
@@ -859,6 +903,8 @@ def diagnostics_config():
             "max_context_chars": config.MAX_CONTEXT_CHARS,
             "cors_allow_origins": config.CORS_ALLOW_ORIGINS,
         },
+        "config_files": project_config.resolved_config_files(),
+        "runtime_config_validation": project_config.validate_runtime_config_files(),
         "generated_at": _utc_now_iso(),
     }
 
@@ -915,11 +961,11 @@ def ui_contracts():
 async def resolve_ticket(request: Request, body: TicketRequest):
     try:
         if not body.ticket or not body.ticket.strip():
-            raise HTTPException(status_code=400, detail="Ticket text is empty")
+            raise HTTPException(status_code=400, detail={"error_type": "validation-blocked", "message": "Ticket text is empty"})
         if body.mode != "suggest":
-            raise HTTPException(status_code=400, detail="Unsupported mode. This v3.x demo is suggest-only.")
+            raise HTTPException(status_code=400, detail={"error_type": "validation-blocked", "message": "Unsupported mode. This v3.x demo is suggest-only."})
         if body.support_ops_mode not in {"query", "chat"}:
-            raise HTTPException(status_code=400, detail="Unsupported support_ops_mode")
+            raise HTTPException(status_code=400, detail={"error_type": "validation-blocked", "message": "Unsupported support_ops_mode"})
 
         if not allow_request():
             logger.warning("Rate limit hit")
@@ -976,7 +1022,16 @@ async def resolve_ticket(request: Request, body: TicketRequest):
         raise
     except Exception as e:
         logger.error(f"API error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        message = str(e)
+        if "No approved" in message or "No retrieval" in message:
+            error_type = "retrieval-empty"
+        elif "validation" in message.lower() or "unsupported" in message.lower():
+            error_type = "validation-blocked"
+        elif "provider" in message.lower() or "api key" in message.lower():
+            error_type = "provider-error"
+        else:
+            error_type = "provider-error"
+        raise HTTPException(status_code=500, detail={"error_type": error_type, "message": message})
 
 
 # ── Feedback ─────────────────────────────────────────────────
@@ -1254,7 +1309,7 @@ async def get_support_bundle(trace_id: str, request: Request):
         config_hash=trace.get("config_hash", ""),
         metadata={"bundle_parts": sorted(bundle.keys()), "redaction_status": "redacted"},
     )
-    return {"status": "ok", "bundle": bundle}
+    return {"status": "ok", "bundle": _redact_export_value(bundle)}
 
 
 @app.get("/support-bundles/{trace_id}.zip", dependencies=[Depends(verify_admin)])

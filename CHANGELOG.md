@@ -9,13 +9,14 @@ All notable changes to this project are documented here.
 - Source-safety gate recovery now separates customer-facing citations from retrieved evidence context, adds triage reporting, tightens route-critical evidence selection, normalizes stale abstention drafts out of customer-facing evals, and refreshes the golden run: release gate passes with 0 hard failures, 12 validation/review warnings, Recall@3/5 at 0.6596, source precision at 0.4716, citation precision at 1.0, with the focused eval/source-safety suite passing.
 - Phase 8 advanced reasoning experiment is implemented with typed planner output, query-decomposed retrieval, evidence tables, structured reply rendering, stricter validation, and trace/retrieval diagnostics.
 - Phase 9 GraphRAG is registered only as a disabled/fail-closed retrieval experiment arm; current RAG plus query decomposition is the active experiment path.
-- Phase 10 docs were consolidated into a compact reader set, with `docs/TECHNICAL.md` restored as the project orientation guide and release gates kept in `docs/RELEASE_CHECKLIST.md`.
+- Public demo docs were simplified into a short README, compact docs index, demo guide, technical guide, code-map JSON, and one root simplification checklist. The older local planning docs and release checklist were removed from the public workspace.
+- Added `scripts/demo_doctor.sh` and `make doctor` as the one-command demo readiness check, with terminal status plus JSON/Markdown reports under `diagnostics/demo_doctor/`.
 - Ticket workspace no longer blanks after rendering a resolved ticket, and advanced retrieval controls were removed from the main ticket form.
 - Ticket and configurator HTML routes now disable browser caching, and the ticket workspace has a render error boundary instead of a blank root.
 - Demo 403/login tickets now retrieve the approved mobile-login article again instead of abstaining from stale cache, over-redacted query text, or role-filtered evidence.
 - Draft-run persistence now stores plain citation/source strings as valid JSON arrays for JSONB columns.
 - Live retrieval A/B evaluation now supports request-scoped `experiment_arm` routing, isolates ticket/response caches by arm, writes per-arm reports under `eval/ab/`, and records the latest baseline-vs-query-decomposition comparison in README.
-- README and docs now show refreshed public-alpha metrics from the latest stored golden eval.
+- README and docs now show refreshed demo-readiness metrics from the latest stored golden eval.
 - Golden eval source matching now supports source aliases and rank-aware retrieval metrics from real retrieved source IDs.
 - `/resolve` usage summaries now include response-level cost for future golden result generation.
 

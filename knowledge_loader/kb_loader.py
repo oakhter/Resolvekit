@@ -228,6 +228,13 @@ def configured_source_paths() -> list[str]:
 
 
 def loader_source_paths() -> list[str]:
+    non_csv = [path for path in configured_source_paths() if path and not path.endswith(".csv")]
+    if non_csv:
+        raise ValueError(
+            "Public preview ingest supports CSV only. Convert to CSV using "
+            "demo_data/onboarding/source_manifest_template.csv: "
+            + ", ".join(non_csv)
+        )
     custom_paths = [
         path for path in configured_source_paths()
         if path.endswith(".csv") and not is_demo_source_path(path)
@@ -1065,7 +1072,11 @@ def main(argv: list[str] | None = None):
         print("  Run kb_scraper.py first to generate CSV files.")
         return
 
-    csv_paths = loader_source_paths()
+    try:
+        csv_paths = loader_source_paths()
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 1
 
     if not csv_paths:
         print("  No loadable CSV files found.")
@@ -1074,7 +1085,7 @@ def main(argv: list[str] | None = None):
             print("  Set DEMO_MODE=true for sandbox data, or configure custom source paths.")
         else:
             print(f"  Run kb_scraper.py first or add CSV files to:\n  {PROCESSED_DIR}")
-        return
+        return 0
 
     print(f"  Demo mode: {'on' if config.DEMO_MODE else 'off'}")
     print(f"  Found {len(csv_paths)} CSV file(s):\n")
@@ -1101,11 +1112,11 @@ def main(argv: list[str] | None = None):
                 selected = [csv_paths[i] for i in indices]
             except (ValueError, IndexError):
                 print("  Invalid selection.")
-                return
+                return 1
 
     if not selected:
         print("  No files selected.")
-        return
+        return 0
 
     print("  Connecting to knowledge schema...", flush=True)
     try:
@@ -1114,7 +1125,7 @@ def main(argv: list[str] | None = None):
         print(f"  knowledge schema connected ({config.KNOWLEDGE_SCHEMA}).\n", flush=True)
     except Exception as e:
         print(f"  knowledge schema connection failed: {e}")
-        return
+        return 1
 
     print("  Connecting to ops schema...", flush=True)
     try:
@@ -1124,7 +1135,7 @@ def main(argv: list[str] | None = None):
     except Exception as e:
         print(f"  ops schema connection failed: {e}")
         vec_conn.close()
-        return
+        return 1
 
     print("  Checking existing DB entries...", flush=True)
     loaded_ids = get_loaded_ids(vec_conn)
@@ -1178,7 +1189,8 @@ def main(argv: list[str] | None = None):
         print("\n  Failed articles:")
         for f in total_failed:
             print(f"    x {f}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

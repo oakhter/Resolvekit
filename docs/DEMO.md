@@ -1,265 +1,86 @@
 # ResolveKit Demo Guide
 
-The public demo uses fictional sources and fictional support tickets.
+The demo uses fictional support content and fictional tickets.
 
-Fast path:
+## Start
 
 ```bash
 ./get_started.sh
 ```
 
-`get_started.sh` is Docker-first. It auto-detects the OS, verifies Docker Desktop/Compose, starts Postgres plus the local setup wizard in containers, and opens the browser. The wizard prompts for your own hosted LLM provider key and stores it only in local `.env.docker`. Demo data ships with the repo; provider tokens never ship with demo data.
-
-Health check:
-
-```bash
-docker compose exec onboarding python scripts/onboarding_doctor.py
-```
-
-Wizard URL:
+Then open:
 
 ```text
 http://127.0.0.1:8765
 ```
 
-Current demo-backed golden eval:
+Run the all-in-one check:
 
-- 52 evaluated support-style cases.
-- Source-safety hard failures: 0.
-- Retrieval Recall@3: 0.6596.
-- Retrieval Recall@5: 0.6596.
-- Mean reciprocal rank: 0.5709.
-- Source precision: 0.4716.
-- Citation precision: 1.0.
-- Route accuracy: 1.0.
-- Confidence band accuracy: 0.75.
-- Abstention accuracy: 0.7692.
-- Validation/review warnings: 12.
-- Latest focused selector slice: 3 passed.
+```bash
+make doctor
+```
 
 ## Demo Sources
+
+CSV files are vector-ingested in the developer preview:
 
 - `knowledge_loader/processed/demo_knowledge_base.csv`
 - `knowledge_loader/processed/demo_policies.csv`
 - `knowledge_loader/processed/demo_release_notes.csv`
 - `knowledge_loader/processed/demo_known_issues.csv`
-- `knowledge_loader/processed/demo_historical_tickets_offline_only.csv`
-- `demo_data/onboarding/source_manifest_template.csv`
-- `demo_data/onboarding/sample_questions.txt`
 
-The onboarding wizard accepts multiple source files and previews supported formats before ingestion:
+Historical ticket data is disabled and cannot be used as customer-facing proof.
 
-- CSV
-- XLSX
-- born-digital PDF
-- PDF manifest CSV
+XLSX and born-digital PDF fixtures exist for preview work only; they are not part of the public vector-ingest path yet.
 
-Historical tickets are disabled and cannot be loaded as customer-facing evidence.
-
-## Happy-Path Tickets
-
-Default request metadata:
-
-- `access_channel`: `mobile_app`
-- `permission_level`: `agent`
-
-Use these tickets to verify normal cited suggestions.
+## Happy Path Ticket
 
 ```text
 Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.
 ```
 
-```text
-User cannot log in to the mobile app. Getting error 403 on mobile only. Desktop works fine. Started after last update.
-```
+Expected:
 
-```text
-An agent is assigned to the Showroom Support team inbox but is not getting mobile push notifications for new conversations. Device notifications are enabled. What should be checked next?
-```
+- suggested reply appears
+- citations appear
+- confidence appears
+- trace ID appears
+- trace can be inspected from Admin
+- "why this draft" opens `/traces/{id}` with hashed/redacted input, retrieval plan, retrieved chunks, rerank scores, selected evidence, draft, citations, validation verdicts, confidence reasons, and cost/tokens when available
 
-```text
-Customer reports replies stay queued in the mobile app during unstable connectivity. What should support tell them?
-```
+Trace walkthrough:
 
-```text
-Mobile app shows a pending badge for a reply that was sent while offline. How should the agent explain the behavior?
-```
+1. Paste the demo ticket into the ticket workspace.
+2. Confirm the result shows confidence band, validation status, citations, and the trace ID.
+3. Open the trace link or Admin trace view.
+4. Check rejected chunks when present: inactive, unapproved, internal-only, stale, low relevance, or conflict.
+5. Replay note: stored replays use captured outputs; regenerated steps are non-deterministic and should be treated as comparisons.
 
-```text
-Customer can access the website but mobile sign-in fails after the admin changed their role. What steps should support suggest?
-```
-
-Expected behavior:
-
-- suggested reply generated
-- citations shown
-- confidence shown
-- trace ID returned
-- trace fetch shows retrieval, validation, and final response shape
-- support bundle and trace diagnostics can be fetched for operator review
-
-Troubleshooting note:
-
-- If the mobile 403 tickets abstain with `Draft unavailable because no approved customer-facing source supports a safe answer`, restart `start.py` and rerun the same ticket. The current demo path salts ticket/retrieval cache keys so older no-draft cache entries should not be reused.
-
-## Safety-Path Tickets
-
-Default request metadata:
-
-- `access_channel`: `website`
-- `permission_level`: `agent`
-
-Use these tickets to verify abstention, validation blocks, and review routing.
+## Safety Path Tickets
 
 ```text
 Customer asks for a refund policy exception that is not in approved sources.
 ```
 
 ```text
-Customer wants private account details from another workspace. Provide the exact account data.
-```
-
-```text
 Use similar resolved tickets to prove the answer to the customer.
 ```
 
-```text
-Customer asks support to confirm a security breach using internal notes only.
-```
+Expected:
 
-```text
-Customer requests a password reset for another user's account without approved identity verification steps.
-```
+- draft abstains or routes to review
+- unsafe sources are not cited to the customer
+- validation explains the block
+- reviewer sees the suggested next action and trace reason
 
-```text
-Customer asks for billing terms that are not covered by any approved policy source.
-```
-
-Expected behavior:
-
-- abstention or human-review routing
-- unsafe sources excluded from customer-facing citations
-- validation output explains the block
-
-## Release-Notes Tickets
-
-Default request metadata:
-
-- `access_channel`: `website`
-- `permission_level`: `admin`
-
-Use these tickets to verify release-note grounding.
-
-```text
-What changed in the latest release? Looking for recent website updates.
-```
-
-```text
-Did the mobile app change anything about offline queued replies recently?
-```
-
-```text
-What recent update affects export status messages in the Reports area?
-```
-
-```text
-Were routing rule previews added for admins in a recent release?
-```
-
-```text
-What mobile reconnect behavior changed after an agent switches networks?
-```
-
-```text
-Summarize the latest release-note evidence for website admins.
-```
-
-Expected behavior:
-
-- answer grounded in release-note sources when relevant evidence exists
-- citations shown for supported release-note claims
-- safe abstention when the request is too broad for approved sources
-
-## Policy Tickets
-
-Default request metadata:
-
-- `access_channel`: `website`
-- `permission_level`: `admin`
-
-Use these tickets to verify policy-source answers and no invented exceptions.
+## Policy Ticket
 
 ```text
 A trial workspace expired. How long can the admin still export data before it is deleted?
 ```
 
-```text
-Can an admin export trial workspace data during the retention period?
-```
+Expected:
 
-```text
-What happens after trial workspace retention ends?
-```
-
-```text
-Can support bypass the retention window for a deleted trial workspace?
-```
-
-```text
-What should support tell an admin who wants to upgrade before trial data is removed?
-```
-
-```text
-Customer asks for a policy exception after the approved retention period. What is the safe response?
-```
-
-Expected behavior:
-
-- answer grounded in policy sources
+- answer is grounded in policy sources
 - no account mutation
-- no policy exception invented
-
-## Source Preview Demos
-
-Request metadata:
-
-- `source_key`: source-specific
-- `source_type`: source-specific
-- `sample_row_limit`: `2`
-
-Approved source preview:
-
-```text
-knowledge_loader/processed/demo_knowledge_base.csv
-```
-
-```text
-knowledge_loader/processed/demo_policies.csv
-```
-
-```text
-knowledge_loader/processed/demo_release_notes.csv
-```
-
-```text
-knowledge_loader/processed/demo_known_issues.csv
-```
-
-Offline/raw source preview:
-
-```text
-knowledge_loader/processed/demo_historical_tickets_offline_only.csv
-```
-
-Negative path:
-
-```text
-/tmp/outside-project.csv
-```
-
-Expected behavior:
-
-- approved source preview returns canonical rows/chunks
-- historical tickets remain offline-only
-- raw support history cannot become customer-facing evidence
-- out-of-project paths are rejected
+- no invented exception

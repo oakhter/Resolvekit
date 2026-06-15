@@ -1,0 +1,27 @@
+name: public-preview
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  focused-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+      - name: Focused preview tests
+        run: |
+          .venv/bin/python -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values or phase_1 or phase_2 or phase_3 or phase_4 or phase_5 or phase_6 or phase_7"
+      - name: Public smoke script
+        run: bash scripts/public_smoke.sh
+      - name: Focused post-launch hardening tests
+        run: |
+          .venv/bin/python -m pytest tests/test_mock_provider.py tests/test_post_launch_hardening.py tests/test_source_contract_properties.py

@@ -1,3 +1,6 @@
+# Minimal worked product example:
+# - product_area values in CSV/demo data should map to product/platform/role language here.
+# - example_product is mirrored by demo CSV product_area values such as login, mobile, billing, and compliance.
 {
   "products": {
     "example_product": {

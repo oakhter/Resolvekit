@@ -881,8 +881,13 @@ function InsightPanel({ resolution, processing, pipelineStep }) {
           h("div", { className: "res-block-header" }, h("span", null, item.source_title || item.source_id || `Evidence ${index + 1}`)),
           h("div", { className: "res-block-body mono" }, displayValue({
             source_id: item.source_id,
+            source_title: item.source_title,
             source_type: item.source_type,
+            doc_type: item.doc_type,
+            product_area: item.product_area,
             approval_state: item.is_approved === false ? "not approved" : "approved/customer-facing",
+            why_eligible: item.is_customer_facing_allowed === false ? "not customer-facing" : "approved, active, customer-facing",
+            excerpt: item.excerpt || item.chunk_excerpt || item.text_preview || "",
             chunk_id: item.chunk_id || item.evidence_id || item.citation_id,
             cited_claim: item.claim || item.text || "",
           }))
@@ -917,6 +922,18 @@ function ResolutionView({ resolution, fallbackPrefs, email, setEmail, originalEm
 
   return h(React.Fragment, null,
     h("div", { className: resolution.from_cache ? "cache-tag cache-hit" : "cache-tag cache-live" }, resolution.from_cache ? "Served from cache" : "Live response"),
+    h("div", { className: "res-block expanded" },
+      h("div", { className: "res-block-header" },
+        h("span", null, `Confidence band: ${(resolution.confidence_scorer || {}).confidence_band || resolution.confidence || "unknown"}`),
+        resolution.trace_id ? h("a", { href: `/traces/${encodeURIComponent(resolution.trace_id)}`, target: "_blank", rel: "noreferrer" }, "why this draft") : null
+      ),
+      h("div", { className: "res-block-body mono" }, displayValue({
+        abstention_reason: resolution.draft_unavailable_reason || (resolution.confidence_scorer || {}).reason || "",
+        warning_reason: ((resolution.validation || {}).warnings || [])[0] || "",
+        suggested_next_action: resolution.suggested_next_action || (resolution.confidence_scorer || {}).recommended_action || "review citations and trace before sending",
+        trace_id: resolution.trace_id || "",
+      }))
+    ),
     h("div", { className: "resolution" },
       ...blocks.map(([key, label, value, mono], index) => {
         const expanded = !!open[key];

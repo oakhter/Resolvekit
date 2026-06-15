@@ -44,7 +44,7 @@ a { color:#93c5fd; }
 <header>
   <div>
     <h1>ResolveKit Get Started</h1>
-    <div class="sub">Local setup wizard. Provider key stays only in local .env.</div>
+    <div class="sub">Numbered local setup wizard. Provider key stays only in local .env.docker.</div>
   </div>
   <button class="secondary" onclick="refresh()">Refresh</button>
 </header>
@@ -53,7 +53,7 @@ a { color:#93c5fd; }
   <section class="panel" id="panel"></section>
 </main>
 <script>
-const steps = ["System", "Provider key", "Setup", "Sources", "First draft", "Launch"];
+const steps = ["1. System", "2. Provider", "3. Knowledge", "4. First draft", "5. Open app"];
 const state = { step: 0, status: null, log: "", uploads: [] };
 const tasks = [
   ["install_dependencies", "Install Python dependencies"],
@@ -91,25 +91,33 @@ function card(name, value, detail="") {
 function renderSystem() {
   const s = state.status || {};
   const os = s.os || {};
+  const keyStatus = s.provider_key_placeholder ? "warn" : s.provider_key_present;
+  const viewerStatus = s.viewer_token_placeholder ? "warn" : s.viewer_token_present;
+  const adminStatus = s.admin_token_placeholder ? "warn" : s.admin_token_present;
   return `
-    <h2>System Check</h2>
-    <p class="small">Detected path: ${s.container_mode ? "Docker container" : (os.label || "unknown")}. Docker install uses guided OS-specific instructions when missing.</p>
+    <h2>1. System</h2>
+    <p class="small">Check Docker, Python, local config, and provider status before loading knowledge.</p>
     <div class="grid">
       ${card("OS", true, os.label || "")}
       ${card("Python", true, s.python || "")}
       ${card("Docker CLI", s.docker_cli, os.docker_install_hint || "")}
       ${card("Docker Ready", s.docker_ready, s.docker_ready ? "Daemon reachable" : os.docker_install_hint || "Start Docker")}
       ${card("Compose", s.docker_compose, "Docker Compose plugin")}
-      ${card("Provider Key", s.provider_key_present, `${s.provider || "openai"} / ${s.provider_key_name || ""}`)}
+      ${card("Provider Key", keyStatus, `${s.provider || "openai"} key ${s.provider_key_placeholder ? "needs replacement" : "configured"}`)}
+      ${card("Viewer Token", viewerStatus, s.viewer_token_placeholder ? "Replace the demo placeholder before sharing." : "Configured")}
+      ${card("Admin Token", adminStatus, s.admin_token_placeholder ? "Replace the demo placeholder before sharing." : "Configured")}
+      ${card("Database Credentials", s.default_database_credentials ? "warn" : true, s.default_database_credentials ? "Default demo DB credentials are fine locally only." : "Custom database credentials")}
     </div>
     <div class="row"><button onclick="setStep(1)">Continue</button><button class="secondary" onclick="refresh()">Recheck</button></div>
+    <h3>What happened</h3>
+    <p class="small">This step reads local status only. It does not print or send provider keys.</p>
   `;
 }
 function renderProvider() {
   const s = state.status || {};
   return `
-    <h2>Provider Key</h2>
-    <p class="small">Required. Bring your own provider key. Saved only to local <code>.env</code>; masked everywhere else.</p>
+    <h2>2. Provider</h2>
+    <p class="small">Bring your own OpenAI or Gemini key. The key is saved only to local <code>.env.docker</code>; masked everywhere else.</p>
     <label>Provider</label>
     <select id="provider"><option value="openai" ${s.provider === "openai" ? "selected" : ""}>OpenAI</option><option value="gemini" ${s.provider === "gemini" ? "selected" : ""}>Gemini</option></select>
     <label>Provider API key</label>
@@ -127,11 +135,18 @@ async function saveProvider() {
 }
 function renderSetup() {
   return `
-    <h2>Setup Tasks</h2>
-    <p class="small">Run all tasks. If Docker is missing, install/start Docker for your OS, then rerun Start Docker DB.</p>
+    <h2>3. Knowledge</h2>
+    <p class="small">Run these setup tasks to create the database, generate demo data, and load CSV knowledge into Postgres/pgvector.</p>
     ${tasks.map(([id, label]) => `<div class="task"><div><strong>${label}</strong><div class="small">${id}</div></div><button onclick="runTask('${id}')">Run</button></div>`).join("")}
+    <h3>CSV knowledge files</h3>
+    <p class="small">Optional: upload your own CSV knowledge files after demo data is ready. Uploaded files are copied into <code>demo_data/onboarding/uploads</code>, added to local source config, and loaded into the vector DB.</p>
+    <input id="files" type="file" multiple accept=".csv">
+    <div class="row"><button onclick="uploadSources()">Upload and preview</button><button onclick="ingestSources()">Ingest uploaded sources</button></div>
     <div class="row"><button onclick="runAll()">Run all</button><button class="secondary" onclick="setStep(3)">Continue</button></div>
+    <h3>What happened</h3>
+    <p class="small">Each task shows the command result below, including what was generated, loaded, or checked.</p>
     <pre>${escapeHtml(state.log || "No setup log yet.")}</pre>
+    <pre>${escapeHtml(JSON.stringify(state.uploads, null, 2))}</pre>
   `;
 }
 async function runTask(name) {
@@ -146,7 +161,7 @@ async function runAll() {
 }
 function renderSources() {
   return `
-    <h2>Data Sources</h2>
+    <h2>3. Knowledge Sources</h2>
     <p class="small">Select CSV knowledge files. Files are copied into <code>demo_data/onboarding/uploads</code>, previewed, and loaded into the vector DB.</p>
     <input id="files" type="file" multiple accept=".csv">
     <div class="row"><button onclick="uploadSources()">Upload and preview</button><button onclick="ingestSources()">Ingest uploaded sources</button><button class="secondary" onclick="setStep(4)">Continue</button></div>
@@ -179,11 +194,13 @@ function readBase64(file) {
 }
 function renderSmoke() {
   return `
-    <h2>First Draft Test</h2>
+    <h2>4. First draft</h2>
     <p class="small">Runs a demo support ticket through the main app. Requires provider key, DB, loaded sources, and app server.</p>
     <label>Demo ticket</label>
     <textarea id="ticket">Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.</textarea>
-    <div class="row"><button onclick="runSmoke()">Run first draft</button><button class="secondary" onclick="setStep(5)">Continue</button></div>
+    <div class="row"><button onclick="runSmoke()">Run first draft</button><button class="secondary" onclick="setStep(4)">Continue</button></div>
+    <h3>What happened</h3>
+    <p class="small">This starts the app if needed, sends a demo ticket, and returns a trace ID when the draft flow completes.</p>
     <pre>${escapeHtml(state.log || "")}</pre>
   `;
 }
@@ -195,22 +212,33 @@ async function runSmoke() {
 }
 function renderLaunch() {
   return `
-    <h2>Launch</h2>
-    <p class="small">Setup complete. Open Viewer for support drafting or Admin for traces, source status, exports, evals, and config.</p>
+    <h2>5. Open app</h2>
+    <p class="small">Setup complete. Open the ticket UI for support drafting, Configurator for sources, or Admin for traces and metrics.</p>
     <div class="row">
-      <a href="http://127.0.0.1:8000/" target="_blank"><button>Open Viewer</button></a>
-      <a href="http://127.0.0.1:8000/configurator" target="_blank"><button class="secondary">Open Admin</button></a>
+      <a href="http://127.0.0.1:8000/" target="_blank"><button>Open Ticket UI</button></a>
+      <a href="http://127.0.0.1:8000/configurator" target="_blank"><button class="secondary">Open Configurator</button></a>
+      <a href="http://127.0.0.1:8000/admin" target="_blank"><button class="secondary">Open Admin</button></a>
       <button class="secondary" onclick="refresh()">Refresh status</button>
+      <button class="secondary" onclick="resetDemo()">Reset local demo</button>
     </div>
+    <h3>What happened</h3>
+    <p class="small">The local app is available on port 8000. Keep using this wizard only when you need to change setup or ingest another CSV.</p>
     <pre>${escapeHtml(JSON.stringify(state.status, null, 2))}</pre>
   `;
+}
+async function resetDemo() {
+  if (!confirm("Reset local generated demo files? Use docker compose down -v separately only if you want to delete the database volume.")) return;
+  log("Resetting local demo state...");
+  const data = await api("/api/task", { method:"POST", body:JSON.stringify({ task:"reset_demo_state" }) });
+  log(JSON.stringify(data.result, null, 2));
+  await refresh();
 }
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
 }
 function render() {
   renderSteps();
-  const views = [renderSystem, renderProvider, renderSetup, renderSources, renderSmoke, renderLaunch];
+  const views = [renderSystem, renderProvider, renderSetup, renderSmoke, renderLaunch];
   document.getElementById("panel").innerHTML = views[state.step]();
 }
 refresh().catch(err => { state.log = err.message; render(); });

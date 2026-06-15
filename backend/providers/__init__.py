@@ -1,4 +1,5 @@
 from backend.providers.gemini import GeminiProvider
+from backend.providers.mock_provider import MockProvider
 from backend.providers.openai_provider import OpenAIProvider
 
 from backend.core.logger import get_logger
@@ -9,6 +10,7 @@ logger = get_logger(__name__)
 
 PROVIDERS = {
     "gemini": GeminiProvider,
+    "mock": MockProvider,
     "openai": OpenAIProvider,
 }
 
@@ -24,6 +26,7 @@ def get_provider():
     model_name = config.MODELS.get(provider_name, "")
     api_key = {
         "gemini": config.GEMINI_API_KEY,
+        "mock": "mock-preview",
         "openai": config.OPENAI_API_KEY,
     }.get(provider_name, "")
 

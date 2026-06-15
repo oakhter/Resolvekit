@@ -16,4 +16,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "backend.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD BIND_HOST=${BIND_HOST:-127.0.0.1}; python -m uvicorn backend.api.app:app --host "$BIND_HOST" --port 8000

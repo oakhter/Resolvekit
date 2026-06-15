@@ -58,25 +58,37 @@ def run_command(args: list[str], timeout: int = 300) -> dict:
 def system_status() -> dict:
     env = read_env(ENV_PATH)
     provider = env.get("ACTIVE_PROVIDER", "openai")
-    key_name = "OPENAI_API_KEY" if provider == "openai" else "GEMINI_API_KEY"
+    key_name = "OPENAI_API_KEY" if provider == "openai" else ("GEMINI_API_KEY" if provider == "gemini" else "")
+    viewer_token = env.get("API_KEY", "")
+    admin_token = env.get("CONFIGURATOR_API_KEY", "")
+    provider_key = env.get(key_name, "") if key_name else "mock-preview"
+    database_url = env.get("DATABASE_URL", "")
     docker_ready = True if CONTAINER_MODE else command_exists("docker") and command_ok(["docker", "info"], timeout=5)
     compose_ready = True if CONTAINER_MODE else command_exists("docker") and command_ok(["docker", "compose", "version"], timeout=5)
+    try:
+        env_display = str(ENV_PATH.relative_to(ROOT))
+    except ValueError:
+        env_display = ENV_PATH.name
     return {
         "os": detect_os().to_dict(),
         "python": sys.version.split()[0],
         "venv_python": str(VENV_PYTHON.relative_to(ROOT)) if VENV_PYTHON.exists() else "",
-        "env_file": str(ENV_PATH.relative_to(ROOT)),
+        "env_file": env_display,
         "env_exists": ENV_PATH.exists(),
         "provider": provider,
-        "provider_key_present": bool(env.get(key_name)),
-        "provider_key_name": key_name,
-        "viewer_token_present": bool(env.get("API_KEY")),
-        "admin_token_present": bool(env.get("CONFIGURATOR_API_KEY")),
+        "provider_key_present": bool(provider_key),
+        "provider_key_placeholder": provider_key in {"", "replace-with-provider-key", "change-me"},
+        "provider_key_name": key_name or "MOCK_PROVIDER_NO_KEY",
+        "viewer_token_present": bool(viewer_token),
+        "viewer_token_placeholder": viewer_token in {"", "change-me", "replace-with-random-viewer-token"},
+        "admin_token_present": bool(admin_token),
+        "admin_token_placeholder": admin_token in {"", "change-me-configurator", "replace-with-random-admin-token"},
         "docker_cli": True if CONTAINER_MODE else command_exists("docker"),
         "docker_ready": docker_ready,
         "docker_compose": compose_ready,
         "container_mode": CONTAINER_MODE,
-        "database_url_present": bool(env.get("DATABASE_URL")),
+        "database_url_present": bool(database_url),
+        "default_database_credentials": "resolvekit:resolvekit" in database_url,
         "app_port_free": port_free(8000),
     }
 
@@ -251,6 +263,39 @@ def ingest_uploaded_sources(paths: list[str]) -> dict:
     return {"ok": bool(added) and load_result.get("ok", False), "added_sources": added, "load_result": load_result}
 
 
+def reset_demo_state() -> dict:
+    removed: list[str] = []
+    for path in [
+        UPLOAD_DIR,
+        ROOT / "config" / "sources.yaml",
+        ROOT / "config" / "products.yaml",
+        ROOT / "config" / "output.yaml",
+        ROOT / "config" / "retrieval_policy.yaml",
+        ROOT / "config" / "workflow.yaml",
+    ]:
+        if path.is_dir():
+            shutil.rmtree(path)
+            removed.append(str(path.relative_to(ROOT)))
+        elif path.exists():
+            path.unlink()
+            removed.append(str(path.relative_to(ROOT)))
+    if CONTAINER_MODE:
+        return {
+            "ok": True,
+            "removed": removed,
+            "stdout": "Local generated demo files removed.",
+            "hint": "To stop containers or remove the database volume, run on the host: docker compose down or docker compose down -v",
+        }
+    down_result = run_command(["docker", "compose", "down"], timeout=120)
+    return {
+        "ok": down_result.get("ok", False),
+        "removed": removed,
+        "stdout": down_result.get("stdout", ""),
+        "stderr": down_result.get("stderr", ""),
+        "hint": "Use docker compose down -v only when you intentionally want to delete the local database volume.",
+    }
+
+
 TASKS = {
     "install_dependencies": install_dependencies,
     "start_database": start_database,
@@ -260,6 +305,7 @@ TASKS = {
     "run_doctor": run_doctor,
     "start_app": start_app,
     "first_draft_smoke": first_draft_smoke,
+    "reset_demo_state": reset_demo_state,
 }
 
 

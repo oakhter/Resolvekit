@@ -10,6 +10,7 @@ APP_DIR   = os.path.dirname(os.path.abspath(__file__))
 VENV_PATH = os.path.join(APP_DIR, ".venv")
 LOG_DIR   = os.path.join(APP_DIR, "diagnostics", "logs")
 PORT      = 8000
+APP_BIND_HOST = os.getenv("APP_BIND_HOST", "127.0.0.1")
 DEBUG     = True   # True → app log messages visible in terminal
 
 load_dotenv(os.path.join(APP_DIR, ".env"))
@@ -134,6 +135,7 @@ def main() -> None:
 
     log("\n── ResolveKit ────────────────────────")
     log(f"   Port:  {PORT}")
+    log(f"   Host:  {APP_BIND_HOST}")
     log(f"   Mode:  {'DEBUG (app logs on)' if DEBUG else 'QUIET'}")
     log(f"   Demo:  {os.getenv('DEMO_MODE', 'true')}")
     log("─────────────────────────────────────────────\n")
@@ -150,7 +152,7 @@ def main() -> None:
 
     uvicorn_cmd = [
         venv_python, "-m", "uvicorn", "backend.api.app:app",
-        "--host", "0.0.0.0",
+        "--host", APP_BIND_HOST,
         "--port", str(PORT),
         "--no-access-log",
         "--log-level", "warning",
@@ -168,9 +170,10 @@ def main() -> None:
         log(f"   Debug: python3 -m uvicorn backend.api.app:app --port {PORT}")
         cleanup()
 
-    log(f"Main app        -> http://localhost:{PORT}")
-    log(f"Ticket sandbox  -> http://localhost:{PORT}")
-    log(f"Configurator    -> http://localhost:{PORT}/configurator\n")
+    url_host = "127.0.0.1" if APP_BIND_HOST in {"0.0.0.0", "::"} else APP_BIND_HOST
+    log(f"Main app        -> http://{url_host}:{PORT}")
+    log(f"Ticket sandbox  -> http://{url_host}:{PORT}")
+    log(f"Configurator    -> http://{url_host}:{PORT}/configurator\n")
 
     log("Ready.\n")
 

@@ -1005,6 +1005,58 @@ def load_config(section: str | None = None, include_examples: bool = True) -> di
     return result[section] if section else result
 
 
+def resolved_config_files() -> dict[str, dict[str, Any]]:
+    files: dict[str, dict[str, Any]] = {}
+    for key in DEFAULT_CONFIG:
+        local_path = LOCAL_FILES[key].resolve()
+        example_path = EXAMPLE_FILES[key].resolve()
+        if local_path.exists():
+            source = "local"
+            active_path = local_path
+        elif example_path.exists():
+            source = "example"
+            active_path = example_path
+        else:
+            source = "default"
+            active_path = local_path
+        files[key] = {
+            "source": source,
+            "active_path": str(active_path),
+            "local_path": str(local_path),
+            "local_exists": local_path.exists(),
+            "example_path": str(example_path),
+            "example_exists": example_path.exists(),
+        }
+    return files
+
+
+def validate_runtime_config_files() -> dict[str, Any]:
+    results: dict[str, Any] = {}
+    errors: list[str] = []
+    for key in DEFAULT_CONFIG:
+        path = LOCAL_FILES[key] if LOCAL_FILES[key].exists() else EXAMPLE_FILES[key]
+        label = str(path.resolve())
+        try:
+            data = _read_yaml(path)
+            merged = load_config(key)
+            validation = validate_config({**load_config(), key: merged})
+            status = "ok" if validation["valid"] else "fail"
+            section_errors = [
+                f"{label} -> {key} -> validation -> {message}"
+                for message in validation.get("errors", [])
+            ]
+        except Exception as exc:
+            status = "fail"
+            section_errors = [f"{label} -> {key} -> parse -> {exc}"]
+        results[key] = {
+            "status": status,
+            "path": label,
+            "errors": section_errors,
+        }
+        errors.extend(section_errors)
+    return {"valid": not errors, "files": results, "errors": errors}
+
+
 def save_config(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("Config payload must be an object")

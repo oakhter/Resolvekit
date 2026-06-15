@@ -1,3 +1,5 @@
+"""Onboarding-only doctor: lightweight wizard checks, not the release gate."""
+
 from __future__ import annotations
 
 import argparse
