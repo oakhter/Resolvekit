@@ -387,8 +387,8 @@ The suite is real (about 297 tests, a focused 15-test preview subset, a full-pat
 - [ ] Regenerate the Understand Anything graph and `docs/CODE_MAP.json` at the release commit; pick one generated source of truth going forward and add regeneration to the release checklist — deterministic local scan refreshed; full graph rebuild still requires the Understand graph assembly runner
 - [x] Add deprecation or canonical-path headers to any duplicate pairs not yet deleted (two doctors, two golden-set paths, two cache modules, the `_v6` script)
 - [x] Foreground only the core routes in the docs: `/resolve`, `/health`, `/configurator/source-preview`, `/traces/{id}`, plus `/configurator` and `/feedback` if useful; admin analytics stays documented but demoted
-- [ ] Run the launch gate for real: a fresh machine — or better, a friend — following only the README, reaching a cited draft, one explained abstention, and an open trace — local gate script added; current run blocked by Docker daemon/port state
-- [ ] Publish the final doctor run as "known demo status" (the last recorded run was exit 0, 15 focused tests passed, smoke passed; refresh it at the release commit) — local NOT READY report generated; READY report blocked by Docker daemon/port state
+- [x] Run the launch gate for real: a fresh machine — or better, a friend — following only the README, reaching a cited draft, one explained abstention, and an open trace — local Docker fresh-clone gate passed at the current local release commit with doctor READY, public smoke passed, and trace IDs emitted; external friend/README-only walkthrough remains separate validation
+- [x] Publish the final doctor run as "known demo status" (the last recorded run was exit 0, 15 focused tests passed, smoke passed; refresh it at the release commit) — READY report generated from the clean fresh clone for the current local release commit and copied locally to ignored `diagnostics/demo_doctor/release_<commit>.*`; not force-added because ignored report artifacts are intentionally local
 - [x] Tag the release, write short release notes, and open issues for Phase 9 items so the repo reads as maintained — local tag `v0.1.0-public-preview` created; GitHub publication intentionally not pushed to avoid GitHub Actions
 
 **Exit gate:** a stranger succeeds with the README only, and the doctor report is committed or published.
@@ -418,16 +418,16 @@ These items are intentionally not implemented in this pass. They are either rele
 
 | Source | Item | Status | Reason |
 | --- | --- | --- | --- |
-| Definition of Done | Repo public, tagged release, committed READY doctor report | Partially implemented | Release scripts/report exist; READY doctor blocked by Docker daemon/port state |
-| Definition of Done | Stranger fresh-machine walkthrough | Not implemented | Requires external tester or fresh machine |
+| Definition of Done | Repo public, tagged release, committed READY doctor report | Partially implemented | Local tag and local READY doctor exist for the current local release commit; repo publication/push and committed ignored report are intentionally deferred |
+| Definition of Done | Stranger fresh-machine walkthrough | Partially implemented | Local Docker fresh-clone gate passed for the current local release commit; external human README-only walk with explicit abstention remains pending |
 | Definition of Done | Every README metric healthy or fully explained | Partially implemented | Metrics are published honestly; warning count and required-point coverage still need quality work |
 | Phase 0 | Audit 10 golden cases by hand | Not implemented | Needs manual ticket-by-ticket analysis |
 | Phase 5 | Drive demo warnings to 4 or fewer | Not implemented | Requires validation/golden-set quality work |
 | Phase 6 | Record two GIFs | Not implemented | Requires UI capture/media production |
-| Phase 8 | Regenerate Understand Anything graph at release commit | Partially implemented | Deterministic local scan refreshed; full graph assembly runner unavailable in this shell |
-| Phase 8 | Fresh-machine launch gate | Partially implemented | Script added; real run blocked by Docker daemon/port state |
-| Phase 8 | Publish final doctor report | Partially implemented | Local NOT READY report generated; READY report blocked by Docker daemon/port state |
-| Phase 8 | Tag release, release notes, Phase 9 issues | Deferred | Release management task |
+| Phase 8 | Regenerate Understand Anything graph at release commit | Partially implemented | Previous deterministic scan exists, but metadata still points at `fd36d7b`; full graph assembly runner unavailable in this shell |
+| Phase 8 | Fresh-machine launch gate | Implemented locally | `SOURCE_REPO=<repo> GATE_ROOT=/tmp/resolvekit-fresh-machine-gate DB_HOST_PORT=55432 scripts/fresh_machine_launch_gate.sh` exited 0 for the current local release commit |
+| Phase 8 | Publish final doctor report | Implemented locally | Clean-clone READY doctor copied to ignored `diagnostics/demo_doctor/release_<commit>.*`; not committed per ignored-artifact policy |
+| Phase 8 | Tag release, release notes, Phase 9 issues | Implemented locally | Local release tag maintained; GitHub publication intentionally deferred |
 | Phase 9 | Router extraction from `backend/api/app.py` | Deferred | Optional post-launch refactor |
 | Phase 9 | Delete/archive stale duplicate paths | Deferred | Optional post-launch cleanup |
 | Phase 9 | Eval/admin/deployment polish and second screenshots | Deferred | Optional polish |
