@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: resolvekit
       POSTGRES_PASSWORD: resolvekit
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_HOST_PORT:-5432}:5432"
     volumes:
       - resolvekit_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,6 +25,8 @@ services:
         required: true
       - path: .env.docker
         required: false
+    environment:
+      BIND_HOST: 0.0.0.0
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

@@ -602,8 +602,10 @@ def test_phase_1_start_py_defaults_to_loopback():
 
 
 def test_phase_1_docker_publish_ports_are_loopback_only():
+    assert '"127.0.0.1:${DB_HOST_PORT:-5432}:5432"' in DOCKER_COMPOSE
     assert '"127.0.0.1:8000:8000"' in DOCKER_COMPOSE
     assert '"127.0.0.1:8765:8765"' in DOCKER_COMPOSE
+    assert "BIND_HOST: 0.0.0.0" in DOCKER_COMPOSE
     assert 'BIND_HOST=${BIND_HOST:-127.0.0.1}' in DOCKERFILE
 
 

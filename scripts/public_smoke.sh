@@ -17,6 +17,24 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
+wait_for_http() {
+  local url="$1"
+  local output="$2"
+  local attempts="${3:-60}"
+  local delay_seconds="${4:-2}"
+  local attempt=1
+  while [ "$attempt" -le "$attempts" ]; do
+    if curl -fsS "$url" >"$output" 2>/tmp/resolvekit_public_smoke_curl_error.txt; then
+      return 0
+    fi
+    sleep "$delay_seconds"
+    attempt=$((attempt + 1))
+  done
+  cat /tmp/resolvekit_public_smoke_curl_error.txt >&2
+  echo "Timed out waiting for $url" >&2
+  return 1
+}
+
 if [ ! -f "$ENV_FILE" ]; then
   cp .env.docker.example "$ENV_FILE"
   echo "created $ENV_FILE from .env.docker.example"
@@ -45,7 +63,7 @@ docker compose exec -T db pg_isready -U resolvekit -d resolvekit
 docker compose exec -T app python scripts/setup_db.py
 printf "all\n" | docker compose exec -T app python knowledge_loader/kb_loader.py
 
-curl -fsS "$BASE_URL/health" >/tmp/resolvekit_health.json
+wait_for_http "$BASE_URL/health" /tmp/resolvekit_health.json
 
 resolve_payload='{
   "ticket": "Customer cannot sign in on mobile app after a role change. Desktop works, mobile shows 403.",

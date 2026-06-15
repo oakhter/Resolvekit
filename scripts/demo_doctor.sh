@@ -11,6 +11,11 @@ REPORT_DIR="$(dirname "$JSON_REPORT")"
 ENV_FILE="${ENV_FILE:-.env.docker}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 ONBOARDING_URL="${ONBOARDING_URL:-http://127.0.0.1:8765}"
+if [ -x ".venv/bin/python" ]; then
+  PYTHON_BIN=".venv/bin/python"
+else
+  PYTHON_BIN="${PYTHON:-python3}"
+fi
 
 mkdir -p "$REPORT_DIR"
 
@@ -206,14 +211,14 @@ else
   record "Key strength" "FAIL" "Viewer/admin tokens must be distinct random values of at least 12 characters." "Set API_KEY and CONFIGURATOR_API_KEY to distinct random values in $ENV_FILE."
 fi
 
-record "Resolved config paths" "PASS" "$(.venv/bin/python - <<'PY'
+record "Resolved config paths" "PASS" "$("$PYTHON_BIN" - <<'PY'
 from backend.core import project_config
 for key, item in project_config.resolved_config_files().items():
     print(f"{key}: {item['source']} -> {item['active_path']}")
 PY
 )" ""
 
-if .venv/bin/python scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv >/tmp/resolvekit_demo_doctor_source_preview.txt 2>&1; then
+if "$PYTHON_BIN" scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv >/tmp/resolvekit_demo_doctor_source_preview.txt 2>&1; then
   record "Source preview dry run" "PASS" "$(cat /tmp/resolvekit_demo_doctor_source_preview.txt | tail -8)"
 else
   record "Source preview dry run" "FAIL" "$(cat /tmp/resolvekit_demo_doctor_source_preview.txt | tail -12)" "Fix CSV row-level errors shown above, then rerun scripts/validate_sources.py <file>."
@@ -242,7 +247,7 @@ else
 fi
 
 run_check "Whitespace check" git diff --check
-run_check "Focused tests" .venv/bin/python -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values"
+run_check "Focused tests" "$PYTHON_BIN" -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values"
 run_check "Demo readiness evaluation" bash scripts/ci_golden_eval.sh
 run_check "Docker smoke" bash scripts/public_smoke.sh
 

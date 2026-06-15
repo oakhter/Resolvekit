@@ -4,13 +4,19 @@ set -euo pipefail
 SOURCE_REPO="${SOURCE_REPO:-$(git config --get remote.origin.url 2>/dev/null || pwd)}"
 GATE_ROOT="${GATE_ROOT:-/tmp/resolvekit-fresh-machine-gate}"
 WORK_DIR="$GATE_ROOT/ResolveKit"
-MOCK_PROVIDER_LINE="ACTIVE_PROVIDER=mock"
+# Fresh-machine gate forces ACTIVE_PROVIDER=mock so it can run without hosted API keys.
+export DB_HOST_PORT="${DB_HOST_PORT:-55432}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-resolvekit_fresh_gate}"
 
 rm -rf "$GATE_ROOT"
 mkdir -p "$GATE_ROOT"
 
 git clone "$SOURCE_REPO" "$WORK_DIR"
 cd "$WORK_DIR"
+trap 'docker compose down --remove-orphans >/dev/null 2>&1 || true' EXIT
+
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 
 cp .env.docker.example .env.docker
 python3 - <<'PY'
@@ -42,6 +48,7 @@ for key, value in updates.items():
         lines.append(f"{key}={value}")
 path.write_text("\n".join(lines).rstrip() + "\n")
 PY
+cp .env.docker .env
 
 make doctor
 bash scripts/public_smoke.sh
