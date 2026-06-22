@@ -3493,6 +3493,24 @@ def test_public_smoke_workflow_prepares_ci_runtime_config():
     assert "CONFIGURATOR_ADMIN_TOKEN=ci-admin-token" in workflow
 
 
+def test_public_smoke_docker_image_installs_cpu_only_torch_first():
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
+    cpu_install = "pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu"
+    requirements_install = "pip install --no-cache-dir -r requirements.txt"
+
+    assert cpu_install in dockerfile
+    assert dockerfile.index(cpu_install) < dockerfile.index(requirements_install)
+
+
+def test_public_smoke_workflow_installs_cpu_only_torch_first():
+    workflow = Path(".github/workflows/public-preview.yml").read_text(encoding="utf-8")
+    cpu_install = ".venv/bin/pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu"
+    requirements_install = ".venv/bin/pip install -r requirements.txt"
+
+    assert cpu_install in workflow
+    assert workflow.index(cpu_install) < workflow.index(requirements_install)
+
+
 def test_direct_evidence_selection_dedupes_sources_and_caps_context():
     from backend.core.orchestrator import _select_direct_evidence_chunks
 
