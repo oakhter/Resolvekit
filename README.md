@@ -1,18 +1,128 @@
 # ResolveKit
 
-ResolveKit is a **local-first, suggest-only support-drafting kit** and support-facing RAG starter kit. It drafts replies from approved sources only, cites every claim, abstains when unsure, and never sends anything without human review.
+ResolveKit is a **local-first, suggest-only support-drafting kit** and support-facing RAG starter kit. It retrieves approved support knowledge, drafts a cited response, validates the draft, and leaves the final decision to a human reviewer.
 
-> **Sunset status:** ResolveKit is frozen as a completed learning/public-preview project. It remains useful as a local Docker demo and reference implementation for governed support drafting, but it is not actively developed and is not production-approved.
+> **Sunset status:** ResolveKit is frozen as a completed learning/public-preview project. It works as a local Docker demo and reference implementation, but it is not actively developed and is not production-approved.
 
-It is **suggest-only** and **not an autonomous support agent**. It does not auto-send, auto-resolve, mutate customer accounts, or turn raw tickets into customer-facing knowledge. Calls to `/resolve` are intended to run with `mode: "suggest"` and human review.
+It is **not an autonomous support agent**. It does not auto-send, auto-resolve, mutate customer accounts, or turn raw tickets into customer-facing knowledge.
 
-> Do not load private customer data into a public or shared instance. ResolveKit is local-first and demo-oriented; you are responsible for what you ingest and where you run it. Ingested content and submitted tickets are sent to your configured LLM provider and stored in the local database and trace store.
+## What This Is
 
-Privacy boundary: ticket text and retrieved KB snippets go to the configured provider, OpenAI or Gemini. KB chunks, traces, and doctor reports stay in the local Postgres volume and trace store. Hashed tickets, not raw tickets, enter traces. local-first doesn't mean offline. Exposing beyond localhost exposes traces and admin analytics.
+- Local/self-hosted developer preview
+- CSV-first support knowledge ingest
+- Cited draft suggestions for support reviewers
+- Confidence, abstention, validation, and redacted traces
+- Human review required before any customer response
 
-## Current Status
+## What This Is Not
 
-Sunset public developer preview. Demo readiness is passing on the stored evaluation set; production readiness is not approved.
+- Not production-approved
+- Not an autonomous support agent
+- Not a customer chatbot or helpdesk replacement
+- Not auto-send, auto-resolve, or account action
+- Not a source-of-truth editor
+- Not hosted SaaS or multi-tenant software
+- Raw tickets are never cited as evidence
+
+Hard boundary: ResolveKit never auto-sends replies, mutates customer accounts, or treats raw tickets as customer-facing knowledge. Use `/resolve` with `mode: "suggest"` and review every draft.
+
+## Quick Start
+
+Docker is the recommended path.
+
+```bash
+git clone <repo-url>
+cd <repo-directory>
+cp .env.docker.example .env.docker
+./get_started.sh
+make doctor
+```
+
+The onboarding wizard opens at:
+
+```text
+Onboarding wizard: http://127.0.0.1:8765
+Ticket workspace:  http://127.0.0.1:8000/
+```
+
+Use an OpenAI/Gemini key, or set `ACTIVE_PROVIDER=mock` in `.env.docker` for a no-key preview.
+
+You're set up when:
+
+- `make doctor` prints `Demo readiness: READY`
+- The ticket workspace opens at `http://127.0.0.1:8000/`
+- The demo ticket returns a draft with citations
+- Confidence and validation status are visible
+
+Doctor summary:
+
+```text
+Demo readiness: READY
+Production readiness: NOT READY
+```
+
+Useful commands:
+
+| Command | Use |
+| --- | --- |
+| `make get-started` | First-time Docker onboarding |
+| `make doctor` | Local readiness check |
+| `bash scripts/public_smoke.sh` | Public smoke test |
+| `python start.py` | Advanced local Python path |
+
+Supported hosted providers are `openai` and `gemini`. Required local config names include `OPENAI_API_KEY` or `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `VIEWER_TOKEN`, `CONFIGURATOR_ADMIN_TOKEN`, `CONFIGURATOR_PREFILL_API_KEY=false`, `CORS_ALLOW_ORIGINS`, `KNOWLEDGE_SCHEMA`, and `OPS_SCHEMA`; start from `.env.docker.example`.
+
+Config map:
+
+| File / Surface | Purpose | User Should Edit? | Takes Effect |
+| --- | --- | --- | --- |
+| `.env.docker` | Provider keys, DB, runtime secrets for Docker | Yes | Restart containers |
+| `.env` | Provider keys, DB, runtime secrets for local Python | Advanced | Restart |
+| `config/products.yaml` | Product identity, aliases, platforms, roles | Yes | Restart/reload |
+| `config/sources.yaml` | Source registry, paths, policy | Yes | Re-ingest for source changes |
+| `config/output.yaml` | Draft tone and visible sections | Yes | Live/next resolve |
+| `config/retrieval_policy.yaml` | Retrieval weights and chunking rules | Advanced | Restart or re-ingest by field |
+| `config/workflow.yaml` | Suggest-only workflow behavior | Rarely | Live/next resolve |
+
+## Bring Your Own CSV
+
+Start from `demo_data/onboarding/source_manifest_template.csv`. A valid public-demo CSV must include these columns:
+
+```text
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+```
+
+Controlled values:
+
+| Field | Values |
+| --- | --- |
+| `source_type` | `csv`, `xlsx`, `pdf` |
+| `source_authority` | `canonical`, `approved`, `conditional` |
+| `doc_type` | `faq`, `troubleshooting`, `policy`, `release_note`, `known_issue`, `api_reference` |
+| `escalation_risk` | `low`, `medium`, `high` |
+| Boolean flags | `true`/`false`; `1`/`0` and `yes`/`no` also validate |
+| Date fields | ISO dates or datetimes, for example `2026-01-01` |
+
+Rows are retrievable only when `is_approved=true`, `is_active=true`, `is_customer_facing_allowed=true`, and `body` is non-empty. Approved rows also require `approved_at` and `reviewed_by`.
+
+Minimal row:
+
+```csv
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+kb_001,Password Reset Guide,csv,canonical,true,true,true,2026-01-01,support_ops,2027-01-01,faq,login,password_reset,v1,low,Customers can reset passwords from account settings after verifying email ownership.
+```
+
+Validate before loading:
+
+```bash
+.venv/bin/python scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv
+```
+
+Examples live in `demo_data/csv/minimal_valid_kb.csv`, `demo_data/csv/resolvekit_demo_kb.csv`, and `demo_data/csv/invalid_examples/`.
+
+## Demo Readiness
+
+Current stored eval status:
 
 <!-- eval-report:start -->
 | Metric | Current value |
@@ -29,243 +139,53 @@ Sunset public developer preview. Demo readiness is passing on the stored evaluat
 | Production readiness | not approved |
 <!-- eval-report:end -->
 
-Treat every draft as a reviewer aid. Retrieval quality still needs work before production use: warnings are too high, source precision is below target, and required-point coverage is low.
+Treat these as final public-preview metrics, not a production claim. Retrieval quality still needs work before production use: warnings are too high, source precision is below target, and required-point coverage is low.
 
-## Sunset Expectations
+`make doctor` runs Docker checks, config checks, secret/local-path hygiene, focused tests, stored evaluation, Docker smoke, and onboarding endpoint checks. Reports are written under `diagnostics/demo_doctor/`; keep generated diagnostics local unless you have reviewed them for private source content.
 
-This repo is preserved as a working demo and learning artifact. The supported path is local Docker, sample data, CSV-first ingest, human-reviewed drafts, and local diagnostics. Treat the metrics above as the final public baseline, not a production claim.
-
-Do not treat this as an actively maintained product surface. The project is not intended for hosted SaaS, autonomous support workflows, customer-facing chat, private customer data, or production deployment without a separate security, data, legal, and quality review.
-
-## Why This Exists
-
-Teams experimenting with support RAG should not have to rebuild the same plumbing every time: Docker setup, CSV KB ingest, pgvector retrieval, citations, validation, traces, metrics, and evals. ResolveKit keeps that workflow in one small project so teams can test the shape of a governed support-drafting system before investing in a full platform.
-
-## Quick Start
-
-Docker is the canonical public-preview path. Local Python mode is for development and needs Postgres with pgvector; use Docker if unsure.
-
-```bash
-git clone <repo-url>
-cd <repo-directory>
-cp .env.docker.example .env.docker   # add your provider key and local secrets
-./get_started.sh
-make doctor
-```
-
-`get_started.sh` starts Docker Postgres plus the onboarding wizard at:
-
-```text
-Onboarding wizard: http://127.0.0.1:8765
-Ticket workspace:  http://127.0.0.1:8000/
-```
-
-The wizard asks for an OpenAI/Gemini key, or `ACTIVE_PROVIDER=mock` for no-key preview, and stores secrets only in local `.env.docker`.
-
-You're set up when:
-- `make doctor` prints `Demo readiness: READY`
-- The ticket workspace opens at `http://127.0.0.1:8000/`
-- The demo ticket returns a draft with citations
-- Confidence and validation status are visible
-- The trace link opens a redacted run trace
-
-Shortcut:
-
-```bash
-make get-started
-```
-
-Entry points:
-
-| Command | Use When |
-| --- | --- |
-| `./get_started.sh` | First-time Docker onboarding |
-| `make doctor` | Checking demo readiness |
-| `bash scripts/public_smoke.sh` | Running the public smoke test |
-| `python start.py` | Local development path, advanced |
-| `scripts/demo_start.sh` | Maintainer/demo helper |
-
-## Demo Doctor
-
-Run one command to check local readiness:
-
-```bash
-make doctor
-```
-
-This runs Docker checks, config checks, secret/local-path hygiene, focused tests, stored evaluation, Docker smoke, and onboarding endpoint checks. It writes:
-
-```text
-diagnostics/demo_doctor/latest.json
-diagnostics/demo_doctor/latest.md
-```
-
-The terminal summary uses plain language:
-
-```text
-Demo readiness: READY
-Production readiness: NOT READY
-```
-
-## What It Does
-
-ResolveKit takes a support ticket, retrieves approved knowledge, drafts a suggested reply, validates citations, records traces, and exposes metrics.
+## How It Works
 
 ```text
 Ticket -> Retrieval Plan -> Approved Sources -> Rerank -> Evidence Bundle -> Draft -> Validate -> Confidence -> Trace/Review
 ```
 
-**Sunset scope is CSV-first ingest.** CSV and XLSX preview/validation exist, but the documented public demo path is CSV. Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
-
-## What This Is
-
-- Local/self-hosted developer preview
-- CSV-first support knowledge ingest
-- Cited draft suggestions for support reviewers
-- Confidence, abstention, validation, and redacted traces
-- Human review required before any customer response
-
-## What This Is Not
-
-- Not production-approved
-- Not an autonomous agent
-- Not a customer chatbot
-- Not a helpdesk replacement
-- Not auto-send, auto-resolve, or account action
-- Not a source-of-truth editor
-- Not multi-tenant SaaS
-- Not for end customers
-- Raw tickets are never cited as evidence
-
-Suggest-only contract: use `mode: "suggest"`. Other modes are rejected server-side as a safety feature.
-
 Happy path:
 
-- upload or use a CSV knowledge base
-- ingest it into Postgres/pgvector
-- ask for a suggested reply
-- inspect citations, confidence, and trace data
-- record feedback on whether the draft was useful
-
-Sample walkthrough: paste "Customer cannot sign in on mobile app after a role change"; expect a cited draft, confidence band, validation status, and trace link. See `docs/DEMO.md`.
+- Load approved customer-facing knowledge
+- Submit a support ticket
+- Inspect the cited draft, confidence, validation status, and trace
+- Decide what a human reviewer should send
 
 Safety path:
 
-- missing context should lead to abstention or review
-- raw historical tickets are not customer-facing evidence
-- unsupported claims are blocked or flagged
+- Missing context should lead to abstention or review
+- Raw tickets, chats, calls, and emails are not customer-facing evidence
+- Unsupported claims are blocked or flagged
 
-## CSV Format
+## Privacy Boundary
 
-Use `demo_data/onboarding/source_manifest_template.csv` as the starting template. A valid public-demo CSV must include exactly these required columns:
-
-```text
-source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
-```
-
-Accepted controlled values:
-
-| Field | Accepted Values |
-| --- | --- |
-| `source_type` | `csv`, `xlsx`, `pdf` |
-| `source_authority` | `canonical`, `approved`, `conditional` |
-| `doc_type` | `faq`, `troubleshooting`, `policy`, `release_note`, `known_issue`, `api_reference` |
-| `escalation_risk` | `low`, `medium`, `high` |
-| Boolean flags | `true`/`false`; `1`/`0` and `yes`/`no` also validate |
-| Date fields | ISO dates or datetimes, for example `2026-01-01` |
-
-Rows are only chunked for retrieval when `is_approved=true`, `is_active=true`, `is_customer_facing_allowed=true`, and `body` is non-empty. Approved rows also need `approved_at` and `reviewed_by`.
-
-Minimal row:
-
-```csv
-source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
-kb_001,Password Reset Guide,csv,canonical,true,true,true,2026-01-01,support_ops,2027-01-01,faq,login,password_reset,v1,low,Customers can reset passwords from account settings after verifying email ownership.
-```
-
-Validate before loading:
-
-```bash
-.venv/bin/python scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv
-```
-
-For examples, see `demo_data/csv/minimal_valid_kb.csv`, `demo_data/csv/resolvekit_demo_kb.csv`, and `demo_data/csv/invalid_examples/`.
-
-## Configuration Files
-
-Config map:
-
-| File / Surface | Purpose | User Should Edit? | Takes Effect |
-| --- | --- | --- | --- |
-| `.env` | Provider keys, DB, runtime secrets for local Python | Yes | Restart |
-| `.env.docker` | Provider keys, DB, runtime secrets for Docker | Yes | Restart containers |
-| `config/products.yaml` | Product identity, aliases, platforms, roles | Yes | Restart/reload |
-| `config/sources.yaml` | Source registry, paths, policy | Yes | Re-ingest for source changes |
-| `config/output.yaml` | Draft tone and visible sections | Yes | Live/next resolve |
-| `config/retrieval_policy.yaml` | Retrieval weights and chunking rules | Advanced | Restart or re-ingest by field |
-| `config/workflow.yaml` | Suggest-only workflow behavior | Rarely | Live/next resolve |
-| `configs/baseline.yaml` | Baseline experiment config | No for first demo | Advanced only |
-| `configs/ab/` | Offline experiment variants | No for first demo | Advanced only |
-
-Ignore `configs/ab/` unless experimenting.
-
-Required basics:
-
-```env
-ACTIVE_PROVIDER=openai
-OPENAI_API_KEY=
-DATABASE_URL=postgresql://resolvekit:resolvekit@localhost:5432/resolvekit
-KNOWLEDGE_SCHEMA=knowledge
-OPS_SCHEMA=ops
-API_KEY=change-me
-CONFIGURATOR_API_KEY=change-me-configurator
-VIEWER_TOKEN=replace-with-random-viewer-token
-CONFIGURATOR_ADMIN_TOKEN=replace-with-random-admin-token
-CONFIGURATOR_PREFILL_API_KEY=false
-CORS_ALLOW_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
-```
-
-Supported hosted providers are `openai` and `gemini`. Set only the provider key needed by `ACTIVE_PROVIDER`; `model_warmup` checks the selected provider during doctor runs.
-No-key preview mode is available with `ACTIVE_PROVIDER=mock`; it returns canned drafts labeled `MOCK PREVIEW` so you can inspect ingest, UI, traces, and review flow without paid API calls.
+Do not load private customer data into a public or shared instance. Ticket text and retrieved KB snippets go to the configured provider, OpenAI or Gemini. KB chunks, traces, and doctor reports stay in the local Postgres volume and trace store. Hashed tickets, not raw tickets, enter traces. local-first doesn't mean offline. Exposing beyond localhost exposes traces and admin analytics.
 
 ## Common Failures
 
-| Failure | Good Error Behavior |
+| Failure | Expected Behavior |
 | --- | --- |
 | Missing provider key | Names the exact missing env var |
-| Docker not running | Says Docker is required for quickstart |
+| Docker not running | Says Docker is required for quick start |
 | Port 8000/8765 in use | Shows the conflict and fix |
-| DB not ready | Says what to wait for or run |
-| Bad CSV row | Names row, column, expected value |
+| Bad CSV row | Names row, column, and expected value |
 | No approved sources | Says rows were excluded by source flags |
-| Unsupported ingest file | Names the supported public-preview formats and points to the template |
-| Provider call fails | Shows provider and safe remediation |
+| Unsupported ingest file | Names supported preview formats and points to the template |
 
-## Code Map
+## Project Map
 
-Core work lives in `frontend/`, `backend/api/`, `backend/core/`, `backend/providers/`, `pipeline/`, `knowledge_loader/`, and `scripts/`. See `docs/TECHNICAL.md` and `docs/CODE_MAP.json`.
+Core code lives in `frontend/`, `backend/api/`, `backend/core/`, `backend/providers/`, `pipeline/`, `knowledge_loader/`, and `scripts/`.
 
-## AI Transparency And Ethics
+Docs:
 
-This codebase and its documentation were substantially generated with AI assistance and then reviewed through tests and local smoke runs.
-
-The project is meant as a learning and experimentation base for support RAG systems. It is not a drop-in autonomous agent. LLM-generated drafts are suggestions for human review. Teams should follow their own policy for disclosing AI assistance in support workflows.
-
-Do not use raw tickets, chats, calls, or emails as customer-facing evidence. Keep approved knowledge sources separate from historical support data, and validate citations before showing a draft to a customer.
-
-ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.
-
-## Developer Commands
-
-```bash
-bash scripts/public_smoke.sh
-.venv/bin/python -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values" tests/test_mock_provider.py tests/test_post_launch_hardening.py tests/test_source_contract_properties.py tests/test_ui_snapshots.py
-bash scripts/ci_golden_eval.sh
-make reset-demo
-make reload-kb
-```
-
-Logs live under `diagnostics/logs/` and app stdout; attach `diagnostics/demo_doctor/latest.md` after checking it contains no private source content. Keep generated diagnostics local unless you have reviewed them for private source content.
+- [Demo Guide](docs/DEMO.md)
+- [Technical Guide](docs/TECHNICAL.md)
+- [Code Map](docs/CODE_MAP.json)
 
 ## API Shape
 
@@ -275,7 +195,7 @@ Primary endpoint:
 POST /resolve
 ```
 
-Request model rejects unknown fields. Use suggest mode:
+Use suggest mode:
 
 ```json
 {
@@ -287,7 +207,11 @@ Request model rejects unknown fields. Use suggest mode:
 }
 ```
 
-See [docs/TECHNICAL.md](docs/TECHNICAL.md) for API routes, trace fields, metrics, and safety details.
+Request models reject unknown fields. See [docs/TECHNICAL.md](docs/TECHNICAL.md) for routes, trace fields, metrics, and safety details.
+
+## AI Transparency And Ethics
+
+This codebase and its documentation were substantially generated with AI assistance and then reviewed through tests and local smoke runs. LLM-generated drafts are suggestions for human review. ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.
 
 ## License
 
