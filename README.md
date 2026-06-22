@@ -2,6 +2,8 @@
 
 ResolveKit is a **local-first, suggest-only support-drafting kit** and support-facing RAG starter kit. It drafts replies from approved sources only, cites every claim, abstains when unsure, and never sends anything without human review.
 
+> **Sunset status:** ResolveKit is frozen as a completed learning/public-preview project. It remains useful as a local Docker demo and reference implementation for governed support drafting, but it is not actively developed and is not production-approved.
+
 It is **suggest-only** and **not an autonomous support agent**. It does not auto-send, auto-resolve, mutate customer accounts, or turn raw tickets into customer-facing knowledge. Calls to `/resolve` are intended to run with `mode: "suggest"` and human review.
 
 > Do not load private customer data into a public or shared instance. ResolveKit is local-first and demo-oriented; you are responsible for what you ingest and where you run it. Ingested content and submitted tickets are sent to your configured LLM provider and stored in the local database and trace store.
@@ -10,7 +12,7 @@ Privacy boundary: ticket text and retrieved KB snippets go to the configured pro
 
 ## Current Status
 
-Public developer preview. Demo readiness is passing on the stored evaluation set; production readiness is not approved.
+Sunset public developer preview. Demo readiness is passing on the stored evaluation set; production readiness is not approved.
 
 <!-- eval-report:start -->
 | Metric | Current value |
@@ -28,6 +30,12 @@ Public developer preview. Demo readiness is passing on the stored evaluation set
 <!-- eval-report:end -->
 
 Treat every draft as a reviewer aid. Retrieval quality still needs work before production use: warnings are too high, source precision is below target, and required-point coverage is low.
+
+## Sunset Expectations
+
+This repo is preserved as a working demo and learning artifact. The supported path is local Docker, sample data, CSV-first ingest, human-reviewed drafts, and local diagnostics. Treat the metrics above as the final public baseline, not a production claim.
+
+Do not treat this as an actively maintained product surface. The project is not intended for hosted SaaS, autonomous support workflows, customer-facing chat, private customer data, or production deployment without a separate security, data, legal, and quality review.
 
 ## Why This Exists
 
@@ -107,7 +115,7 @@ ResolveKit takes a support ticket, retrieves approved knowledge, drafts a sugges
 Ticket -> Retrieval Plan -> Approved Sources -> Rerank -> Evidence Bundle -> Draft -> Validate -> Confidence -> Trace/Review
 ```
 
-**Public preview ingest supports CSV and XLSX preview/validation; vector load remains CSV-first.** Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
+**Sunset scope is CSV-first ingest.** CSV and XLSX preview/validation exist, but the documented public demo path is CSV. Bring your own docs by starting from `demo_data/onboarding/source_manifest_template.csv`, previewing row-level issues, ingesting valid approved rows, then running a demo ticket. Envelope: single KB namespace per deployment, English-only prompts/eval, OpenAI/Gemini or mock preview, pgvector, loopback URLs.
 
 ## What This Is
 
@@ -146,6 +154,42 @@ Safety path:
 - missing context should lead to abstention or review
 - raw historical tickets are not customer-facing evidence
 - unsupported claims are blocked or flagged
+
+## CSV Format
+
+Use `demo_data/onboarding/source_manifest_template.csv` as the starting template. A valid public-demo CSV must include exactly these required columns:
+
+```text
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+```
+
+Accepted controlled values:
+
+| Field | Accepted Values |
+| --- | --- |
+| `source_type` | `csv`, `xlsx`, `pdf` |
+| `source_authority` | `canonical`, `approved`, `conditional` |
+| `doc_type` | `faq`, `troubleshooting`, `policy`, `release_note`, `known_issue`, `api_reference` |
+| `escalation_risk` | `low`, `medium`, `high` |
+| Boolean flags | `true`/`false`; `1`/`0` and `yes`/`no` also validate |
+| Date fields | ISO dates or datetimes, for example `2026-01-01` |
+
+Rows are only chunked for retrieval when `is_approved=true`, `is_active=true`, `is_customer_facing_allowed=true`, and `body` is non-empty. Approved rows also need `approved_at` and `reviewed_by`.
+
+Minimal row:
+
+```csv
+source_id,source_title,source_type,source_authority,is_approved,is_active,is_customer_facing_allowed,approved_at,reviewed_by,needs_review_at,doc_type,product_area,issue_class,version_scope,escalation_risk,body
+kb_001,Password Reset Guide,csv,canonical,true,true,true,2026-01-01,support_ops,2027-01-01,faq,login,password_reset,v1,low,Customers can reset passwords from account settings after verifying email ownership.
+```
+
+Validate before loading:
+
+```bash
+.venv/bin/python scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv
+```
+
+For examples, see `demo_data/csv/minimal_valid_kb.csv`, `demo_data/csv/resolvekit_demo_kb.csv`, and `demo_data/csv/invalid_examples/`.
 
 ## Configuration Files
 
@@ -194,7 +238,7 @@ No-key preview mode is available with `ACTIVE_PROVIDER=mock`; it returns canned 
 | DB not ready | Says what to wait for or run |
 | Bad CSV row | Names row, column, expected value |
 | No approved sources | Says rows were excluded by source flags |
-| Non-CSV ingest | Says CSV-only and points to the template |
+| Unsupported ingest file | Names the supported public-preview formats and points to the template |
 | Provider call fails | Shows provider and safe remediation |
 
 ## Code Map
@@ -221,7 +265,7 @@ make reset-demo
 make reload-kb
 ```
 
-Logs live under `diagnostics/logs/` and app stdout; attach `diagnostics/demo_doctor/latest.md` after checking it contains no private source content. Open gaps from `llm_review.md`: golden-case audit, warning reduction, GIFs, fresh-machine launch gate, final doctor report, release tag, router/orchestrator cleanup, extra ingest format, true local LLM. No SaaS, billing, or enterprise promises.
+Logs live under `diagnostics/logs/` and app stdout; attach `diagnostics/demo_doctor/latest.md` after checking it contains no private source content. Keep generated diagnostics local unless you have reviewed them for private source content.
 
 ## API Shape
 
