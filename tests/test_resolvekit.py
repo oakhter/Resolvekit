@@ -13,6 +13,9 @@ Run via:  python tests/run_qa.py
 Or:       pytest tests/test_resolvekit.py -k TestResolve -v
 """
 import argparse
+import os
+import subprocess
+import sys
 import time
 import pytest
 import httpx
@@ -640,6 +643,23 @@ def test_operational_secret_validation_rejects_empty_placeholder_and_shared_valu
             "VIEWER_TOKEN": "viewer-secret",
             "CONFIGURATOR_ADMIN_TOKEN": "config-admin-secret",
         })
+
+
+def test_config_module_import_is_safe_without_api_key():
+    env = os.environ.copy()
+    env["API_KEY"] = ""
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import backend.core.config; print('imported')"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "imported" in result.stdout
 
 
 def test_operational_secret_validation_accepts_distinct_strong_values():

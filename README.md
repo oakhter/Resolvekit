@@ -26,6 +26,10 @@ It is **not an autonomous support agent**. It does not auto-send, auto-resolve, 
 
 Hard boundary: ResolveKit never auto-sends replies, mutates customer accounts, or treats raw tickets as customer-facing knowledge. Use `/resolve` with `mode: "suggest"` and review every draft.
 
+## AI Transparency And Ethics
+
+This codebase and its documentation were substantially generated with AI assistance and then reviewed through tests and local smoke runs. LLM-generated drafts are suggestions for human review. ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.
+
 ## Quick Start
 
 Docker is the recommended path.
@@ -150,6 +154,8 @@ Current stored eval status:
 
 Treat these as final public-preview metrics, not a production claim. Retrieval quality still needs work before production use: warnings are too high, source precision is below target, and required-point coverage is low.
 
+Metric decimals are ratios from 0 to 1, where `1` means perfect for that check. For example, `Recall@3/5 = 0.6596` means about 66% of expected evidence was found in the top retrieved results, `Source precision = 0.4716` means about 47% of cited/retrieved sources were the expected ones, and `Required-point coverage = 0.0577` means the draft covered only about 6% of required answer points.
+
 `make doctor` runs Docker checks, config checks, secret/local-path hygiene, focused tests, stored evaluation, Docker smoke, and onboarding endpoint checks. Reports are written under `diagnostics/demo_doctor/`; keep generated diagnostics local unless you have reviewed them for private source content.
 
 ## How It Works
@@ -157,6 +163,8 @@ Treat these as final public-preview metrics, not a production claim. Retrieval q
 ```text
 Ticket -> Retrieval Plan -> Approved Sources -> Rerank -> Evidence Bundle -> Draft -> Validate -> Confidence -> Trace/Review
 ```
+
+![ResolveKit RAG stages](assets/readme/resolvekit-rag-stages.png)
 
 Happy path:
 
@@ -190,6 +198,8 @@ Do not load private customer data into a public or shared instance. Ticket text 
 
 Core code lives in `frontend/`, `backend/api/`, `backend/core/`, `backend/providers/`, `pipeline/`, `knowledge_loader/`, and `scripts/`.
 
+![ResolveKit architecture overview](assets/readme/resolvekit-architecture-overview.png)
+
 Docs:
 
 - [Demo Guide](docs/DEMO.md)
@@ -217,10 +227,6 @@ Use suggest mode:
 ```
 
 Request models reject unknown fields. See [docs/TECHNICAL.md](docs/TECHNICAL.md) for routes, trace fields, metrics, and safety details.
-
-## AI Transparency And Ethics
-
-This codebase and its documentation were substantially generated with AI assistance and then reviewed through tests and local smoke runs. LLM-generated drafts are suggestions for human review. ResolveKit does not claim ownership over deployer prompts, private source content, tickets, or final customer replies.
 
 ## License
 
