@@ -76,6 +76,8 @@ Useful commands:
 
 Supported hosted providers are `openai` and `gemini`. Required local config names include `OPENAI_API_KEY` or `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `VIEWER_TOKEN`, `CONFIGURATOR_ADMIN_TOKEN`, `CONFIGURATOR_PREFILL_API_KEY=false`, `CORS_ALLOW_ORIGINS`, `KNOWLEDGE_SCHEMA`, and `OPS_SCHEMA`; start from `.env.docker.example`.
 
+Local embedding and reranker startup checks run through `backend/providers/model_warmup.py`. Set `WARM_LOCAL_MODELS=false` to keep lazy loading enabled without warming those models at startup; Docker uses this setting by default.
+
 Operational tokens:
 
 - `API_KEY`: viewer/API token for ticket workspace requests.
@@ -98,6 +100,8 @@ Config map:
 | `config/workflow.yaml` | Suggest-only workflow behavior | Rarely | Live/next resolve |
 
 ## Bring Your Own CSV
+
+Public preview ingest supports CSV and XLSX preview/validation, while the documented demo path remains CSV-first.
 
 Start from `demo_data/onboarding/source_manifest_template.csv`. A valid public-demo CSV must include these columns:
 
@@ -157,6 +161,8 @@ Treat these as final public-preview metrics, not a production claim. Retrieval q
 Metric decimals are ratios from 0 to 1, where `1` means perfect for that check. For example, `Recall@3/5 = 0.6596` means about 66% of expected evidence was found in the top retrieved results, `Source precision = 0.4716` means about 47% of cited/retrieved sources were the expected ones, and `Required-point coverage = 0.0577` means the draft covered only about 6% of required answer points.
 
 `make doctor` runs Docker checks, config checks, secret/local-path hygiene, focused tests, stored evaluation, Docker smoke, and onboarding endpoint checks. Reports are written under `diagnostics/demo_doctor/`; keep generated diagnostics local unless you have reviewed them for private source content.
+
+Logs live under `diagnostics/logs/` and app stdout. Review logs and doctor reports for private source content before sharing them.
 
 ## How It Works
 
