@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- README now explains operational token roles and minimum local-secret expectations for new users.
 - README was reordered for a shorter public-facing path: scope, quick start, CSV format, demo readiness, then reference details.
 - README now frames ResolveKit as a sunset public-preview learning project, documents the supported CSV source manifest format, and keeps local planning/review notes out of the Git-facing repo.
 - Public demo onboarding now binds correctly in Docker, uses non-interactive KB loading, routes uploaded custom CSV knowledge into the vector DB even in demo mode, and makes onboarding vector ingest CSV-only instead of silently accepting XLSX/PDF uploads that are preview-only.

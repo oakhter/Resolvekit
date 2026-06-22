@@ -72,6 +72,15 @@ Useful commands:
 
 Supported hosted providers are `openai` and `gemini`. Required local config names include `OPENAI_API_KEY` or `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `VIEWER_TOKEN`, `CONFIGURATOR_ADMIN_TOKEN`, `CONFIGURATOR_PREFILL_API_KEY=false`, `CORS_ALLOW_ORIGINS`, `KNOWLEDGE_SCHEMA`, and `OPS_SCHEMA`; start from `.env.docker.example`.
 
+Operational tokens:
+
+- `API_KEY`: viewer/API token for ticket workspace requests.
+- `CONFIGURATOR_API_KEY`: admin/configurator token; must differ from `API_KEY`.
+- `VIEWER_TOKEN`: trace viewer token; must be non-placeholder.
+- `CONFIGURATOR_ADMIN_TOKEN`: elevated admin token; must differ from viewer keys.
+
+Use distinct random values of at least 12 characters. Do not leave placeholders such as `change-me` or `change-me-configurator`.
+
 Config map:
 
 | File / Surface | Purpose | User Should Edit? | Takes Effect |
