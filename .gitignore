@@ -14,6 +14,7 @@ diagnostics/demo_doctor/*
 .codex
 .understand-anything/
 .worktrees/
+llm_review.md
 Claude.md
 .vscode/
 docs/*

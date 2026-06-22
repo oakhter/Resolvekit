@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- README now frames ResolveKit as a sunset public-preview learning project, documents the supported CSV source manifest format, and keeps local planning/review notes out of the Git-facing repo.
 - Public demo onboarding now binds correctly in Docker, uses non-interactive KB loading, routes uploaded custom CSV knowledge into the vector DB even in demo mode, and makes onboarding vector ingest CSV-only instead of silently accepting XLSX/PDF uploads that are preview-only.
 - Golden eval release gates now support explicit `public_alpha` and `production` profiles. The alpha profile allows the current zero-hard-failure warning state, while the production profile blocks on validation/review count, source precision, Recall@3/5, and required-point coverage targets.
 - Source-safety gate recovery now separates customer-facing citations from retrieved evidence context, adds triage reporting, tightens route-critical evidence selection, normalizes stale abstention drafts out of customer-facing evals, and refreshes the golden run: release gate passes with 0 hard failures, 12 validation/review warnings, Recall@3/5 at 0.6596, source precision at 0.4716, citation precision at 1.0, with the focused eval/source-safety suite passing.
