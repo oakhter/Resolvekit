@@ -3481,6 +3481,18 @@ def test_public_smoke_starts_api_without_onboarding_port_collision():
     assert "docker compose up -d --build db app" in script
 
 
+def test_public_smoke_workflow_prepares_ci_runtime_config():
+    workflow = Path(".github/workflows/public-preview.yml").read_text(encoding="utf-8")
+
+    assert "Prepare public smoke environment" in workflow
+    assert "ACTIVE_PROVIDER=mock" in workflow
+    assert "SMOKE_TEST_MODE=true" in workflow
+    assert "API_KEY=ci-viewer-token" in workflow
+    assert "CONFIGURATOR_API_KEY=ci-configurator-token" in workflow
+    assert "VIEWER_TOKEN=ci-trace-viewer-token" in workflow
+    assert "CONFIGURATOR_ADMIN_TOKEN=ci-admin-token" in workflow
+
+
 def test_direct_evidence_selection_dedupes_sources_and_caps_context():
     from backend.core.orchestrator import _select_direct_evidence_chunks
 

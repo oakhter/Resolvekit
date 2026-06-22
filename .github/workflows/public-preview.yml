@@ -20,6 +20,15 @@ jobs:
       - name: Focused preview tests
         run: |
           .venv/bin/python -m pytest tests/test_resolvekit.py -k "onboarding or public_smoke or launch_readiness or diagnostics_masks_secret_values or phase_1 or phase_2 or phase_3 or phase_4 or phase_5 or phase_6 or phase_7"
+      - name: Prepare public smoke environment
+        run: |
+          cp .env.docker.example .env.docker
+          sed -i 's/^ACTIVE_PROVIDER=.*/ACTIVE_PROVIDER=mock/' .env.docker
+          sed -i 's/^API_KEY=.*/API_KEY=ci-viewer-token/' .env.docker
+          sed -i 's/^CONFIGURATOR_API_KEY=.*/CONFIGURATOR_API_KEY=ci-configurator-token/' .env.docker
+          sed -i 's/^VIEWER_TOKEN=.*/VIEWER_TOKEN=ci-trace-viewer-token/' .env.docker
+          sed -i 's/^CONFIGURATOR_ADMIN_TOKEN=.*/CONFIGURATOR_ADMIN_TOKEN=ci-admin-token/' .env.docker
+          printf '%s\n' 'SMOKE_TEST_MODE=true' >> .env.docker
       - name: Public smoke script
         run: bash scripts/public_smoke.sh
       - name: Focused post-launch hardening tests
