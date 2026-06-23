@@ -88,10 +88,23 @@ Forbidden mode example:
 
 Provider matrix:
 
+Supported hosted providers are `openai` and `gemini`.
+
 | Provider | Required Variables | Defaults | Smoke Command |
 | --- | --- | --- | --- |
 | OpenAI | `ACTIVE_PROVIDER=openai`, `OPENAI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `DATABASE_URL` | `gpt-4o-mini` | `make doctor` |
 | Gemini | `ACTIVE_PROVIDER=gemini`, `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `DATABASE_URL` | `gemini-2.0-flash` | `make doctor` |
+
+Required local config names include `OPENAI_API_KEY` or `GEMINI_API_KEY`, `API_KEY`, `CONFIGURATOR_API_KEY`, `VIEWER_TOKEN`, `CONFIGURATOR_ADMIN_TOKEN`, `CONFIGURATOR_PREFILL_API_KEY=false`, `CORS_ALLOW_ORIGINS`, `KNOWLEDGE_SCHEMA`, and `OPS_SCHEMA`; start from `.env.docker.example`.
+
+Operational tokens:
+
+- `API_KEY`: viewer/API token for ticket workspace requests.
+- `CONFIGURATOR_API_KEY`: admin/configurator token; must differ from `API_KEY`.
+- `VIEWER_TOKEN`: trace viewer token; must be non-placeholder.
+- `CONFIGURATOR_ADMIN_TOKEN`: elevated admin token; must differ from viewer keys.
+
+Use distinct random values of at least 12 characters. Do not leave placeholders such as `change-me` or `change-me-configurator`.
 
 ## Source Contract
 
@@ -102,6 +115,14 @@ Canonical shape lives in `knowledge_loader/source_contract.py` as `SourceRecord`
 Required fields:
 
 `source_id, source_title, source_type, source_authority, is_approved, is_active, is_customer_facing_allowed, approved_at, reviewed_by, needs_review_at, doc_type, product_area, issue_class, version_scope, escalation_risk, body`
+
+Start from `demo_data/onboarding/source_manifest_template.csv`. A valid demo CSV must include those fields. Rows are retrievable only when `is_approved=true`, `is_active=true`, `is_customer_facing_allowed=true`, and `body` is non-empty. Approved rows also require `approved_at` and `reviewed_by`.
+
+Validate before loading:
+
+```bash
+.venv/bin/python scripts/validate_sources.py demo_data/csv/minimal_valid_kb.csv
+```
 
 | Column | Tier | Purpose | Accepted Values / Example |
 | --- | --- | --- | --- |
@@ -187,6 +208,18 @@ Admin token:
 ## Config Reload Semantics
 
 Doctor and startup logs report the resolved absolute path for each runtime config file. A source label of `local` means `config/*.yaml` exists and overrides the tracked example. `example` means ResolveKit is using `config/*.example.yaml`. `default` means only built-in defaults are active.
+
+Config map:
+
+| File / Surface | Purpose | User Should Edit? | Takes Effect |
+| --- | --- | --- | --- |
+| `.env.docker` | Provider keys, DB, runtime secrets for Docker | Yes | Restart containers |
+| `.env` | Provider keys, DB, runtime secrets for local Python | Advanced | Restart |
+| `config/products.yaml` | Product identity, aliases, platforms, roles | Yes | Restart/reload |
+| `config/sources.yaml` | Source registry, paths, policy | Yes | Re-ingest for source changes |
+| `config/output.yaml` | Draft tone and visible sections | Yes | Live/next resolve |
+| `config/retrieval_policy.yaml` | Retrieval weights and chunking rules | Advanced | Restart or re-ingest by field |
+| `config/workflow.yaml` | Suggest-only workflow behavior | Rarely | Live/next resolve |
 
 | Runtime file | Applies | Reload behavior |
 | --- | --- | --- |
@@ -284,6 +317,17 @@ docker compose exec onboarding python scripts/onboarding_doctor.py
 docker compose exec onboarding python scripts/init_project.py --demo
 docker compose exec onboarding python scripts/init_project.py --product-name "Your Product" --source-folder "demo_data/onboarding"
 ```
+
+Common failures:
+
+| Failure | Expected behavior |
+| --- | --- |
+| Missing provider key | Names the exact missing env var |
+| Docker not running | Says Docker is required for quick start |
+| Port 8000/8765 in use | Shows the conflict and fix |
+| Bad CSV row | Names row, column, and expected value |
+| No approved sources | Says rows were excluded by source flags |
+| Unsupported ingest file | Names supported preview formats and points to the template |
 
 ## Security And Exports
 

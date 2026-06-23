@@ -706,12 +706,12 @@ def test_phase_2_readme_contains_security_privacy_and_quickstart_contract():
     assert "Exposing beyond localhost exposes traces and admin analytics." in README_MD
     assert "What This Is" in README_MD
     assert "What This Is Not" in README_MD
-    assert "You're set up when:" in README_MD
+    assert "You're set up when" in README_MD
     assert "`mode: \"suggest\"`" in README_MD
 
 
 def test_phase_3_docs_include_config_map_and_reload_semantics():
-    assert "| File / Surface | Purpose | User Should Edit? | Takes Effect |" in README_MD
+    assert "| File / Surface | Purpose | User Should Edit? | Takes Effect |" in TECHNICAL_MD
     assert "| Runtime file | Applies | Reload behavior |" in TECHNICAL_MD
 
 
@@ -725,8 +725,8 @@ def test_phase_3_runtime_config_validation_reports_file_key_problem():
 
 
 def test_phase_4_public_ingest_is_csv_only_static_contract():
-    assert "The reference implementation supports CSV and XLSX preview/validation" in README_MD
-    assert "demo_data/onboarding/source_manifest_template.csv" in README_MD
+    assert "XLSX is supported for source-contract validation and configurator preview" in TECHNICAL_MD
+    assert "demo_data/onboarding/source_manifest_template.csv" in TECHNICAL_MD
     assert 'CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv", ".xlsx"}' in APP_PY
     assert "Public preview ingest supports CSV only" in (ROOT / "knowledge_loader" / "kb_loader.py").read_text()
 
@@ -2305,8 +2305,8 @@ def test_public_docs_use_single_database_schema_story():
         text = path.read_text(encoding="utf-8")
         for phrase in banned:
             assert phrase not in text, f"{phrase} found in {path}"
-    assert "KNOWLEDGE_SCHEMA" in (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "OPS_SCHEMA" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "KNOWLEDGE_SCHEMA" in (ROOT / "docs" / "TECHNICAL.md").read_text(encoding="utf-8")
+    assert "OPS_SCHEMA" in (ROOT / "docs" / "TECHNICAL.md").read_text(encoding="utf-8")
 
 
 def test_readme_has_suggest_only_and_what_this_is_not():
@@ -2334,7 +2334,7 @@ def test_public_alpha_env_docs_match_supported_providers_and_hardening():
 
     combined = "\n".join([readme, technical, env_example, docker_env_example])
     assert "ANTHROPIC_API_KEY" not in combined
-    assert "Supported hosted providers are `openai` and `gemini`." in readme
+    assert "Supported hosted providers are `openai` and `gemini`." in technical
     assert "CONFIGURATOR_PREFILL_API_KEY=false" in env_example
     assert "CONFIGURATOR_PREFILL_API_KEY=false" in docker_env_example
     assert "CORS_ALLOW_ORIGINS" in combined
