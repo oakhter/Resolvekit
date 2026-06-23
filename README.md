@@ -243,6 +243,16 @@ Safety path:
 - Raw tickets, chats, calls, and emails are not customer-facing evidence
 - Unsupported claims are blocked or flagged
 
+## UI Examples
+
+Reviewable draft path:
+
+![ResolveKit reviewable draft path](assets/readme/resolvekit-reviewable-draft-path.png)
+
+Abstention path:
+
+![ResolveKit abstention path](assets/readme/resolvekit-abstention-path.png)
+
 ## Privacy Boundary
 
 Do not load private customer data into a public or shared instance. Ticket text and retrieved KB snippets go to the configured provider, OpenAI or Gemini. KB chunks, traces, and doctor reports stay in the local Postgres volume and trace store. Hashed tickets, not raw tickets, enter traces. local-first doesn't mean offline. Exposing beyond localhost exposes traces and admin analytics.
