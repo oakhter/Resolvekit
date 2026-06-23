@@ -133,6 +133,23 @@ Demo readiness: READY
 Production readiness: NOT READY
 ```
 
+Logs live under `diagnostics/demo_doctor/`: `latest.json` for tools and `latest.md` for a human-readable checklist.
+
+Runtime config changes have different reload behavior. Provider keys, database URLs, auth secrets, CORS, and warmup flags require a restart. Output and workflow edits apply on the next `/resolve` call. Source path, policy, chunking, and contextual-retrieval edits require re-ingest with `make reload-kb` because stored chunks keep ingest-time metadata.
+
+`model_warmup` is controlled by `WARM_LOCAL_MODELS`. Keep it off for the fastest local preview startup; enable it when testing lazy-load behavior for local embedding models.
+
+### Common Failures
+
+| Failure | Fix |
+| --- | --- |
+| Missing provider key | Set `ACTIVE_PROVIDER=mock` for a no-key preview, or add the matching OpenAI/Gemini key to `.env.docker`. |
+| Docker not running | Start Docker Desktop or Docker Engine, then rerun `make doctor`. |
+| Port 8000/8765 in use | Stop the process using the app or onboarding port, or change the local Docker port mapping. |
+| Bad CSV row | Check the row and column named by source validation, then rerun ingest. |
+| No approved sources | Confirm source rows are active, approved, and customer-facing. |
+| Unsupported ingest file | Use CSV for vector ingest; XLSX/PDF are preview/validation surfaces only. |
+
 ## What I Learned
 
 - RAG quality is mostly an operational/data-quality problem, not just an LLM problem.
