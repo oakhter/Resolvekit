@@ -289,7 +289,7 @@ The follow-on direction is a support-ticket intelligence pipeline focused on:
 - Defining a practical support taxonomy
 - Human-reviewing a sample of tickets
 - Measuring existing label quality
-- Comparing Salesforce labels, LLM labels, and classical ML baselines
+- Comparing existing CRM labels, LLM labels, and classical ML baselines
 - Producing clearer support analytics before attempting automation
 
 In short: ResolveKit explored the AI drafting layer; the next step is building the data and evaluation layer that support automation would depend on.
