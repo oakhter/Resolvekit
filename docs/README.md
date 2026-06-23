@@ -2,6 +2,8 @@
 
 ResolveKit docs are intentionally compact. Start with the root [README](../README.md), then use these files only when you need detail.
 
+ResolveKit is a frozen support-AI learning/reference project, not a production-ready support system. The docs preserve the local demo path and technical design so reviewers can inspect the workflow, safety controls, and evaluation gaps.
+
 ## Maintained Docs
 
 - [Demo Guide](DEMO.md): demo script, sample tickets, expected behavior.
@@ -20,6 +22,10 @@ ResolveKit docs are intentionally compact. Start with the root [README](../READM
 | Citation precision | 1.0 |
 | Required-point coverage | 0.0577 |
 | Production readiness | not approved |
+
+### Interpretation
+
+These results are intentionally included because they show the trust gap. The workflow reached local demo readiness, but retrieval precision, answer coverage, and confidence calibration were not strong enough for production support automation.
 
 Run:
 

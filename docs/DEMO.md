@@ -1,8 +1,12 @@
 # ResolveKit Demo Guide
 
-The demo uses fictional support content and fictional tickets.
+The demo uses fictional support content and fictional tickets. It shows a human-reviewed support-AI drafting workflow, not a production support automation system.
+
+Use this guide to inspect approved-source retrieval, cited draft generation, validation, trace review, and abstention behavior in a local demo.
 
 ## Start
+
+This is a local demo/review path only.
 
 ```bash
 ./get_started.sh
@@ -22,7 +26,7 @@ make doctor
 
 ## Demo Sources
 
-CSV files are vector-ingested in the developer preview:
+CSV files are vector-ingested in the local demo:
 
 - `knowledge_loader/processed/demo_knowledge_base.csv`
 - `knowledge_loader/processed/demo_policies.csv`

@@ -1,6 +1,8 @@
 # ResolveKit Technical Guide
 
-ResolveKit is a local-first, source-grounded, suggest-only support drafting framework. This guide is the fast technical orientation: what runs, how a request moves through the system, where safety is enforced, and how to verify the developer-preview path.
+ResolveKit is a local-first, source-grounded, suggest-only support-AI reference workflow. It is a frozen learning project, not a production-ready support automation system.
+
+This guide is the fast technical orientation: what runs, how a request moves through the system, where safety is enforced, and how to verify the local demo/reference path.
 
 ## System Shape
 
@@ -22,7 +24,7 @@ Main surfaces:
 - `pipeline/`: retrieval, reranking, confidence, validation, and response shaping.
 - `pipeline/responder.py`: suggest-only draft construction and response formatting.
 - `backend/core/run_trace.py`: redacted trace construction and storage helpers.
-- `knowledge_loader/`: source connectors and developer-preview `SourceRecord` contract.
+- `knowledge_loader/`: source connectors and reference `SourceRecord` contract.
 - `frontend/ticket/`: Viewer workflow.
 - `frontend/ticket/index.html`: support ticket workspace.
 - `frontend/configurator/`: Admin/configurator workflow.
@@ -39,9 +41,9 @@ Main surfaces:
 7. The API returns the draft, caveats, citations, confidence, validation outcome, and trace summary.
 8. Admin-only flows can inspect full trace JSON, replay by trace ID, export support bundles, and run eval/A/B jobs.
 
-## Core Preview Routes
+## Core Reference Routes
 
-Public preview docs foreground the route set needed for setup, drafting, source preview, and trace review:
+Reference docs foreground the route set needed for setup, drafting, source preview, and trace review:
 
 - `POST /resolve`
 - `GET /health`
@@ -50,7 +52,7 @@ Public preview docs foreground the route set needed for setup, drafting, source 
 - `GET /configurator`
 - `POST /feedback`
 
-Admin analytics remains available for local operators, but it is secondary to the core demo path.
+Admin analytics remains available for local review, but it is secondary to the core demo path.
 
 ## Stable API Contract
 
@@ -93,7 +95,7 @@ Provider matrix:
 
 ## Source Contract
 
-Alpha onboarding supports CSV vector ingest into Postgres/pgvector. XLSX is public-preview supported for source-contract validation and configurator preview; vector ingest remains CSV-first until the connector-to-vector path is wired. Born-digital PDF fixtures remain preview work only.
+The local demo supports CSV vector ingest into Postgres/pgvector. XLSX is supported for source-contract validation and configurator preview; vector ingest remains CSV-first. Born-digital PDF fixtures remain preview work only.
 
 Canonical shape lives in `knowledge_loader/source_contract.py` as `SourceRecord`.
 
@@ -105,7 +107,7 @@ Required fields:
 | --- | --- | --- | --- |
 | `source_id` | Required | Stable source identifier | `kb_001` |
 | `source_title` | Required | Human-readable citation title | `Password Reset Guide` |
-| `source_type` | Required | Public preview file/source family | `csv` |
+| `source_type` | Required | Reference file/source family | `csv` |
 | `is_approved` | Required | Admits source into governed retrieval | `true` or `false` |
 | `is_active` | Required | Keeps disabled docs out of retrieval | `true` or `false` |
 | `is_customer_facing_allowed` | Required | Permits customer-facing citation | `true` or `false` |
@@ -227,6 +229,8 @@ Metrics:
 - Cost
 - Hard failures
 
+Evaluation outcome: stored results showed the workflow could demonstrate retrieval, cited drafting, validation, and trace review, but source precision, required-point coverage, and confidence calibration were not strong enough for production use. These weak metrics are kept visible because they explain why the project is frozen as a reference implementation.
+
 ## Admin Analytics
 
 ResolveKit stores admin analytics from traces, feedback, review queue rows, knowledge issues, API call costs, and explicit `analytics_event` rows. The admin page keeps Analytics, Usage, Retrieval, Evaluation, Costs, Knowledge Gaps, Sources, Replay, Audit, and Config in one shell so admins do not need a separate configurator tab for routine inspection.
@@ -240,7 +244,7 @@ Report categories:
 - Escalations: review queue volume, escalation count, source issue types.
 - Costs: trace-level cost, API-call cost, average cost per query, API call count, p95 latency.
 
-Multi-user tracking is intentionally lightweight for the developer preview. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
+Multi-user tracking is intentionally lightweight for the local reference implementation. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
 
 A/B rules: offline replay only, same golden cases for control and treatment, one changed lever per variant, and historical negative results retained when reports exist locally.
 
@@ -257,11 +261,13 @@ A/B rules: offline replay only, same golden cases for control and treatment, one
 
 ## Demo And Production Readiness
 
-Final sunset status: local Docker demo/reference implementation only. Production readiness is not approved.
+Final status: local Docker demo/reference implementation only. Production readiness is not approved.
 
-Current stored eval status lives in the root README and `docs/README.md`. Treat those metrics as final public-preview measurements, not an active quality target or release gate.
+Current stored eval status lives in the root README and `docs/README.md`. Treat those metrics as final reference-project measurements, not an active quality target or release gate.
 
 ## Quickstart
+
+This quickstart is for local demo/review only. It is not a production deployment guide.
 
 ```bash
 git clone <repo-url>

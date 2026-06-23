@@ -1,6 +1,6 @@
 # ResolveKit Experiments
 
-ResolveKit is sunset/frozen. Experiments are retained only as historical developer-preview tooling.
+ResolveKit is frozen. Experiments are retained only as historical reference-project tooling.
 
 - `runs/` stores local timestamped offline run outputs.
 - `reports/` stores local summaries and report aliases.

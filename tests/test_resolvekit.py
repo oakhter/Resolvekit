@@ -725,7 +725,7 @@ def test_phase_3_runtime_config_validation_reports_file_key_problem():
 
 
 def test_phase_4_public_ingest_is_csv_only_static_contract():
-    assert "Public preview ingest supports CSV and XLSX preview/validation" in README_MD
+    assert "The reference implementation supports CSV and XLSX preview/validation" in README_MD
     assert "demo_data/onboarding/source_manifest_template.csv" in README_MD
     assert 'CONFIGURATOR_SOURCE_PREVIEW_SUFFIX_ALLOWLIST = {".csv", ".xlsx"}' in APP_PY
     assert "Public preview ingest supports CSV only" in (ROOT / "knowledge_loader" / "kb_loader.py").read_text()
@@ -2229,14 +2229,16 @@ def test_demo_doctor_reports_are_ignored():
     assert "!diagnostics/demo_doctor/.gitkeep" in gitignore
 
 
-def test_readme_is_short_and_transparent_for_public_demo():
+def test_readme_is_transparent_for_reference_project():
     readme = Path("README.md").read_text(encoding="utf-8")
 
-    assert len(readme.splitlines()) <= 250
+    assert len(readme.splitlines()) <= 360
     assert "Demo readiness" in readme
     assert "Production readiness" in readme
     assert "AI Transparency And Ethics" in readme
-    assert "support-facing RAG starter kit" in readme
+    assert "support-AI reference project" in readme
+    assert "Project Status: Frozen Reference Implementation" in readme
+    assert "What I Learned" in readme
     assert "make doctor" in readme
     assert "public alpha gate" not in readme.lower()
     assert "Release gate" not in readme
@@ -2309,9 +2311,8 @@ def test_public_docs_use_single_database_schema_story():
 
 def test_readme_has_suggest_only_and_what_this_is_not():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
-    opening = "\n\n".join(text.split("\n\n")[:4])
     assert "suggest-only" in text
-    assert "not an autonomous support agent" in opening
+    assert "Not a deployable AI support agent" in text
     assert "auto-send" in text
     assert "auto-resolve" in text
     assert "mutate customer accounts" in text
