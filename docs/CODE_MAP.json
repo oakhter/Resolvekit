@@ -1,7 +1,7 @@
 {
-  "generated_from_commit": "306331b plus public-preview phase 7-9 working tree",
-  "generated_at": "2026-06-15T04:20:38Z",
-  "purpose": "Compact public code map for reviewers. The full local graph lives in .understand-anything/ and is intentionally ignored.",
+  "generated_from_commit": "sunset snapshot",
+  "generated_at": "2026-06-23T00:00:00Z",
+  "purpose": "Compact public code map for sunset reviewers. The full local graph lives in .understand-anything/ and is intentionally ignored.",
   "counts": {
     "tracked_files": 220,
     "publishable_files": 240,
@@ -48,7 +48,7 @@
     "pipeline": "RAG steps: planning, retrieval, reranking, drafting, scoring, validation.",
     "knowledge_loader": "CSV knowledge ingest into Postgres/pgvector.",
     "scripts": "Setup, smoke tests, performance smoke, demo doctor, evals, diagnostics.",
-    "tests": "Focused phase hardening tests plus legacy mega-suite coverage.",
-    "configs/ab": "Advanced experiment variants; not needed for the first demo."
+    "tests": "Focused behavior coverage for demo, safety, source-preview, config, API contract, trace, metrics, eval gate, and server-backed API smoke.",
+    "configs/ab": "Historical offline experiment variants; not needed for the demo."
   }
 }

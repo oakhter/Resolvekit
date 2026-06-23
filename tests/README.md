@@ -11,12 +11,6 @@ Active pytest coverage lives in one behavior-based file: `test_resolvekit.py`.
 
 ## Commands
 
-Latest full local run:
-
-```text
-191 passed, 1 skipped
-```
-
 Collect everything:
 
 ```bash

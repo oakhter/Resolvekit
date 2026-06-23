@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here.
 
-## Unreleased
+## v0.1.1-sunset - 2026-06-23
+
+- ResolveKit is frozen as a completed public-preview learning project. The repository remains available as a local Docker demo and reference implementation, with no production-readiness claim or active feature roadmap.
 
 - README now explains operational token roles and minimum local-secret expectations for new users.
 - README was reordered for a shorter public-facing path: scope, quick start, CSV format, demo readiness, then reference details.

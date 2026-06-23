@@ -869,24 +869,6 @@ def test_phase_5_doctor_has_fix_lines_config_paths_and_source_preview():
     assert "Logs live under" in README_MD
 
 
-def test_phase_0_audit_evidence_document_exists():
-    audit = (ROOT / "docs" / "PHASE0_AUDIT.md").read_text()
-
-    for heading in [
-        "Golden Metrics",
-        "Network Defaults",
-        "Key Handling",
-        "Field Enforcement",
-        "Demo Data Hygiene",
-        "Demo Ticket Realism",
-        "Schema Version Marker",
-        "Trace Rerank Scores",
-        "Warning Triage",
-        "Duplicate/Stale Inventory",
-    ]:
-        assert heading in audit
-
-
 def test_phase_6_ticket_ui_shows_trust_controls_and_human_readable_citations():
     assert "Confidence band:" in TICKET_INDEX
     assert "why this draft" in TICKET_INDEX

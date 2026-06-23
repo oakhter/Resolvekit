@@ -242,7 +242,7 @@ Report categories:
 
 Multi-user tracking is intentionally lightweight for the developer preview. `/resolve` and `/feedback` accept `user_id`, `team_id`, and `session_id` fields or the equivalent `x-resolvekit-user`, `x-resolvekit-team`, and `x-resolvekit-session` headers. If no user is supplied, the API falls back to a short hash of the API token. This supports demo and internal team reporting without introducing full session auth.
 
-A/B rules: offline replay only for the developer preview, same golden cases for control and treatment, one changed lever per variant, negative results retained, and ship/no-ship decisions recorded under `experiments/decisions/`.
+A/B rules: offline replay only, same golden cases for control and treatment, one changed lever per variant, and historical negative results retained when reports exist locally.
 
 ## Where To Start Changing Code
 
@@ -257,23 +257,9 @@ A/B rules: offline replay only for the developer preview, same golden cases for 
 
 ## Demo And Production Readiness
 
-- [ ] Docker quickstart works cleanly.
-- [x] Viewer token works.
-- [x] Admin token works.
-- [x] CSV demo data loads.
-- [x] XLSX demo data loads.
-- [x] PDF demo data loads.
-- [ ] At least one green, yellow, and red case work.
-- [x] Trace viewer works.
-- [x] Replay works by trace ID.
-- [x] Support bundle export works.
-- [x] Eval runner works.
-- [x] One A/B stage with five variants runs.
-- [x] Secret scan passes.
-- [x] Source-safety hard failures equal zero.
-- [x] Red-confidence drafts abstain.
+Final sunset status: local Docker demo/reference implementation only. Production readiness is not approved.
 
-Production readiness is not approved until retrieval quality, source precision, validation warnings, and hosted-security checks meet their targets.
+Current stored eval status lives in the root README and `docs/README.md`. Treat those metrics as final public-preview measurements, not an active quality target or release gate.
 
 ## Quickstart
 
@@ -311,7 +297,7 @@ Admin-only exports:
 - Final answer
 - Validation report
 - Config snapshot
-- Eval and A/B reports from `eval/reports/` and `experiments/reports/`
-- Audit log JSONL from `experiments/audit_log.jsonl`
+- Local eval and A/B reports, when present
+- Local audit log JSONL, when present
 
 Export events are audited.
